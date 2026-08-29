@@ -1,0 +1,10 @@
+# No external dependencies required
+# NetSage AI uses only Python 3.10+ standard library:
+#   - ipaddress  (subnet math)
+#   - re         (regex-based config parsing)
+#   - csv        (dataset parsing)
+#   - json       (report output)
+#   - argparse   (CLI arguments)
+#   - dataclasses (data models)
+#   - pathlib    (file handling)
+#   - collections (Counter)

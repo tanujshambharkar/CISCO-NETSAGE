@@ -1,0 +1,76 @@
+{
+  "generated_at": "2026-08-30T02:33:51",
+  "case_stats": {
+    "total_cases": 30,
+    "by_category": {
+      "ACL": 4,
+      "DHCP": 4,
+      "DNS": 3,
+      "GATEWAY": 4,
+      "NAT": 3,
+      "ROUTING": 5,
+      "VLAN": 4,
+      "WIRELESS": 3
+    },
+    "by_osi_layer": {
+      "Layer 1": 1,
+      "Layer 2": 5,
+      "Layer 3": 15,
+      "Layer 4": 4,
+      "Layer 7": 5
+    },
+    "by_difficulty": {
+      "Easy": 10,
+      "Hard": 6,
+      "Medium": 14
+    },
+    "concept_tags": [
+      "access-port-vlan",
+      "acl-direction",
+      "acl-dns-block",
+      "acl-implicit-deny",
+      "acl-return-traffic",
+      "acl-wildcard-mask",
+      "default-gateway",
+      "dhcp-default-router",
+      "dhcp-excluded-address",
+      "dhcp-pool-exhaustion",
+      "dhcp-relay",
+      "dns-a-record",
+      "dns-server-config",
+      "eigrp-as-mismatch",
+      "gateway-subnet",
+      "inter-vlan-routing",
+      "nat-inside-outside",
+      "nat-pool-exhaustion",
+      "native-vlan-mismatch",
+      "ospf-area-mismatch",
+      "ospf-network-statement",
+      "pat-overload",
+      "static-route-mask",
+      "static-routing",
+      "trunk-allowed-vlans",
+      "vlan-configuration",
+      "wireless-authentication",
+      "wireless-channel-overlap",
+      "wireless-wlc-join"
+    ]
+  },
+  "agreement_stats": {
+    "total_reviewed": 30,
+    "agreed": 25,
+    "disagreed": 5,
+    "agreement_rate_pct": 83.3,
+    "by_error_type": {
+      "Hallucinated Evidence": 1,
+      "Incomplete Fix": 1,
+      "Misdiagnosis": 2,
+      "Wrong Layer": 1
+    },
+    "by_confidence_at_error": {
+      "HIGH": 1,
+      "LOW": 1,
+      "MEDIUM": 3
+    }
+  }
+}

@@ -1,0 +1,83 @@
+{
+  "config_file": "tests\\sample_config_1.txt",
+  "total_findings": 9,
+  "errors": 7,
+  "warnings": 1,
+  "info": 1,
+  "findings": [
+    {
+      "check_id": "DUP-IP",
+      "severity": "ERROR",
+      "detail": "Duplicate IP address 192.168.1.1 found on interfaces: GigabitEthernet0/0 (line 17), GigabitEthernet0/1 (line 21)",
+      "affected_lines": [
+        17,
+        21
+      ]
+    },
+    {
+      "check_id": "SUBNET-MISMATCH",
+      "severity": "ERROR",
+      "detail": "Subnet mask mismatch on network 192.168.1.0: GigabitEthernet0/0 (192.168.1.1/255.255.255.0); GigabitEthernet0/1 (192.168.1.1/255.255.255.128)",
+      "affected_lines": [
+        17,
+        21
+      ]
+    },
+    {
+      "check_id": "MISSING-VLAN",
+      "severity": "ERROR",
+      "detail": "VLAN 50 is referenced on interface(s) GigabitEthernet0/2, GigabitEthernet0/4 but is not defined in the VLAN database",
+      "affected_lines": [
+        29,
+        40
+      ]
+    },
+    {
+      "check_id": "MISSING-VLAN",
+      "severity": "ERROR",
+      "detail": "VLAN 99 is referenced on interface(s) GigabitEthernet0/3 but is not defined in the VLAN database",
+      "affected_lines": [
+        34
+      ]
+    },
+    {
+      "check_id": "SHUTDOWN-INTF",
+      "severity": "WARNING",
+      "detail": "Interface Serial0/0/0 is administratively shut down",
+      "affected_lines": [
+        25
+      ]
+    },
+    {
+      "check_id": "NO-GATEWAY",
+      "severity": "INFO",
+      "detail": "No default gateway or default route found in configuration. This may be expected for core routers or switches with dynamic routing.",
+      "affected_lines": []
+    },
+    {
+      "check_id": "TRUNK-NATIVE",
+      "severity": "ERROR",
+      "detail": "Native VLAN mismatch detected across trunk ports: VLAN 99 on GigabitEthernet0/3; VLAN 1 on GigabitEthernet0/4",
+      "affected_lines": [
+        34,
+        40
+      ]
+    },
+    {
+      "check_id": "ACL-NO-PERMIT",
+      "severity": "ERROR",
+      "detail": "ACL 50 has no permit statement; all traffic will be denied by implicit deny at the end",
+      "affected_lines": [
+        52
+      ]
+    },
+    {
+      "check_id": "DHCP-POOL",
+      "severity": "ERROR",
+      "detail": "DHCP pool 'REMOTE_LAN' default-router 10.0.3.1 is not within pool network 10.0.2.0/24",
+      "affected_lines": [
+        12
+      ]
+    }
+  ]
+}

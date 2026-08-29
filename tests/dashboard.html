@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NetSage AI — Dashboard</title>
+    <style>
+        :root {
+            --bg-primary: #0f172a;
+            --bg-card: #1e293b;
+            --bg-card-hover: #334155;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-purple: #8b5cf6;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-amber: #f59e0b;
+            --border: #334155;
+            --shadow: rgba(0, 0, 0, 0.3);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .dashboard-header {
+            text-align: center;
+            margin-bottom: 2rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple));
+            border-radius: 16px;
+            box-shadow: 0 8px 32px var(--shadow);
+        }
+
+        .dashboard-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .dashboard-header p {
+            font-size: 0.9rem;
+            opacity: 0.85;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+            text-align: center;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px var(--shadow);
+        }
+
+        .stat-card .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-card .stat-label {
+            color: var(--text-secondary);
+            font-size: 0.85rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .stat-card.blue .stat-value { color: var(--accent-blue); }
+        .stat-card.green .stat-value { color: var(--accent-green); }
+        .stat-card.red .stat-value { color: var(--accent-red); }
+        .stat-card.amber .stat-value { color: var(--accent-amber); }
+        .stat-card.purple .stat-value { color: var(--accent-purple); }
+
+        .charts-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .chart-card {
+            background: var(--bg-card);
+            border-radius: 12px;
+            padding: 1.5rem;
+            border: 1px solid var(--border);
+        }
+
+        .chart-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+
+        .bar-chart {
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+
+        .bar-row {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .bar-label {
+            width: 100px;
+            text-align: right;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .bar-container {
+            flex: 1;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 6px;
+            height: 28px;
+            overflow: hidden;
+        }
+
+        .bar-fill {
+            height: 100%;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            padding-left: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            min-width: 30px;
+            transition: width 0.6s ease;
+        }
+
+        .agreement-ring {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .ring-container {
+            position: relative;
+            width: 180px;
+            height: 180px;
+        }
+
+        .ring-container svg {
+            transform: rotate(-90deg);
+        }
+
+        .ring-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+        }
+
+        .ring-text .rate {
+            font-size: 2rem;
+            font-weight: 700;
+            color: var(--accent-green);
+        }
+
+        .ring-text .label {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .legend {
+            display: flex;
+            gap: 1.5rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .legend-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+
+        .error-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 0.5rem;
+        }
+
+        .error-table th, .error-table td {
+            padding: 0.6rem 1rem;
+            text-align: left;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.85rem;
+        }
+
+        .error-table th {
+            color: var(--text-secondary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+        }
+
+        .error-table td {
+            color: var(--text-primary);
+        }
+
+        .footer {
+            text-align: center;
+            padding: 1.5rem;
+            color: var(--text-secondary);
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <h1>🧠 NetSage AI — Dashboard</h1>
+        <p>Generated: 2026-08-30T02:33:51</p>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card blue">
+            <div class="stat-value">30</div>
+            <div class="stat-label">Total Cases</div>
+        </div>
+        <div class="stat-card green">
+            <div class="stat-value">25</div>
+            <div class="stat-label">AI Agreed</div>
+        </div>
+        <div class="stat-card red">
+            <div class="stat-value">5</div>
+            <div class="stat-label">AI Corrected</div>
+        </div>
+        <div class="stat-card purple">
+            <div class="stat-value">83.3%</div>
+            <div class="stat-label">Agreement Rate</div>
+        </div>
+    </div>
+
+    <div class="charts-grid">
+        <div class="chart-card">
+            <h3>📊 Cases by Category</h3>
+            <div class="bar-chart">
+                <div class="bar-row">
+                    <span class="bar-label">ACL</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 80.0%; background: #6366f1;">4</div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">DHCP</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 80.0%; background: #8b5cf6;">4</div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">DNS</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 60.0%; background: #a855f7;">3</div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">GATEWAY</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 80.0%; background: #d946ef;">4</div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">NAT</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 60.0%; background: #ec4899;">3</div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">ROUTING</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 100.0%; background: #f43f5e;">5</div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">VLAN</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 80.0%; background: #f97316;">4</div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">WIRELESS</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 60.0%; background: #eab308;">3</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h3>🎯 AI vs. Human Agreement</h3>
+            <div class="agreement-ring">
+                <div class="ring-container">
+                    <svg width="180" height="180" viewBox="0 0 180 180">
+                        <circle cx="90" cy="90" r="75" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="14" />
+                        <circle cx="90" cy="90" r="75" fill="none" stroke="var(--accent-green)"
+                            stroke-width="14" stroke-dasharray="392.69875 471.2385"
+                            stroke-linecap="round" />
+                    </svg>
+                    <div class="ring-text">
+                        <div class="rate">83.3%</div>
+                        <div class="label">Agreement</div>
+                    </div>
+                </div>
+                <div class="legend">
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background: var(--accent-green);"></span>
+                        Agreed (25)
+                    </div>
+                    <div class="legend-item">
+                        <span class="legend-dot" style="background: var(--accent-red);"></span>
+                        Corrected (5)
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h3>📈 Cases by Difficulty</h3>
+            <div class="bar-chart">
+                <div class="bar-row">
+                    <span class="bar-label">Easy</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 71.42857142857143%; background: #22c55e;">10</div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">Hard</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 42.857142857142854%; background: #ef4444;">6</div>
+                    </div>
+                </div>
+                <div class="bar-row">
+                    <span class="bar-label">Medium</span>
+                    <div class="bar-container">
+                        <div class="bar-fill" style="width: 100.0%; background: #f59e0b;">14</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-card">
+            <h3>⚠️ Error Type Breakdown</h3>
+            <table class="error-table">
+                <thead>
+                    <tr><th>Error Type</th><th>Count</th></tr>
+                </thead>
+                <tbody>
+                    <tr><td>Hallucinated Evidence</td><td>1</td></tr>
+                    <tr><td>Incomplete Fix</td><td>1</td></tr>
+                    <tr><td>Misdiagnosis</td><td>2</td></tr>
+                    <tr><td>Wrong Layer</td><td>1</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>NetSage AI — Responsible AI Dashboard | 29 unique concept tags across 30 cases</p>
+    </div>
+</body>
+</html>

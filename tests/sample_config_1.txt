@@ -1,0 +1,57 @@
+! Sample Cisco IOS Running Configuration with Intentional Faults
+! For testing NetSage AI Rule Checker
+!
+hostname R1
+!
+ip dhcp excluded-address 10.0.2.1 10.0.2.10
+ip dhcp pool OFFICE
+ network 192.168.1.0 255.255.255.0
+ default-router 192.168.1.1
+ dns-server 8.8.8.8
+!
+ip dhcp pool REMOTE_LAN
+ network 10.0.2.0 255.255.255.0
+ default-router 10.0.3.1
+ dns-server 8.8.8.8
+!
+interface GigabitEthernet0/0
+ ip address 192.168.1.1 255.255.255.0
+ no shutdown
+!
+interface GigabitEthernet0/1
+ ip address 192.168.1.1 255.255.255.128
+ no shutdown
+!
+interface Serial0/0/0
+ ip address 203.0.113.1 255.255.255.252
+ shutdown
+!
+interface GigabitEthernet0/2
+ switchport mode access
+ switchport access vlan 50
+ no shutdown
+!
+interface GigabitEthernet0/3
+ switchport mode trunk
+ switchport trunk native vlan 99
+ switchport trunk allowed vlan 1,10,20
+ no shutdown
+!
+interface GigabitEthernet0/4
+ switchport mode trunk
+ switchport trunk native vlan 1
+ switchport trunk allowed vlan 1,10,50
+ no shutdown
+!
+vlan 10
+ name Sales
+!
+vlan 20
+ name Engineering
+!
+access-list 50 deny 192.168.1.100
+access-list 50 deny 192.168.1.200
+!
+ip route 10.0.2.0 255.255.255.0 203.0.113.2
+!
+end

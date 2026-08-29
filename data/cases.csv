@@ -1,0 +1,375 @@
+case_id,category,symptom,topology_note,show_commands,expected_fault,osi_layer,concept_tag,difficulty
+CASE-001,VLAN,"PC1 on Fa0/3 cannot communicate with any other host in VLAN 10","SW1 (2960) with 3 PCs; Fa0/1-2 in VLAN 10, Fa0/3 should be VLAN 10; uplink Fa0/24 trunk to SW2",">>> show vlan brief
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/3, Fa0/4, Fa0/5
+20   Engineering                      active    Fa0/10, Fa0/11
+1002 fddi-default                     act/unsup
+1003 token-ring-default               act/unsup
+>>> show interfaces Fa0/3 switchport
+Name: Fa0/3
+Switchport: Enabled
+Administrative Mode: static access
+Operational Mode: static access
+Administrative Trunking Encapsulation: dot1q
+Access Mode VLAN: 1 (default)
+Voice VLAN: none","Port Fa0/3 is in VLAN 1 (default) instead of VLAN 10; additionally VLAN 10 has not been created on the switch",2,vlan-configuration,Easy
+CASE-002,VLAN,"Hosts in VLAN 20 on SW1 cannot reach hosts in VLAN 20 on SW2 despite trunk being up","SW1 and SW2 connected via Fa0/24 trunk; both switches have VLAN 10 and VLAN 20; PCs distributed across both",">>> show interfaces trunk
+Port        Mode             Encapsulation  Status        Native vlan
+Fa0/24      on               802.1q         trunking      1
+
+Port        Vlans allowed on trunk
+Fa0/24      1,10
+
+Port        Vlans allowed and active in management domain
+Fa0/24      1,10
+>>> show vlan brief
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/1, Fa0/2
+10   Sales                            active    Fa0/5, Fa0/6
+20   Engineering                      active    Fa0/10, Fa0/11","Trunk port Fa0/24 allowed VLAN list is 1,10 only — VLAN 20 is not permitted on the trunk",2,trunk-allowed-vlans,Medium
+CASE-003,VLAN,"Intermittent connectivity between SW1 and SW2; CDP error messages in log","SW1 and SW2 connected via Gi0/1 trunk; CDP enabled on both switches",">>> show interfaces trunk (SW1)
+Port        Mode             Encapsulation  Status        Native vlan
+Gi0/1       on               802.1q         trunking      1
+>>> show interfaces trunk (SW2)
+Port        Mode             Encapsulation  Status        Native vlan
+Gi0/1       on               802.1q         trunking      99
+>>> show logging | include native
+%CDP-4-NATIVE_VLAN_MISMATCH: Native VLAN mismatch discovered on Gi0/1 (1) with SW2 Gi0/1 (99)","Native VLAN mismatch: SW1 trunk uses native VLAN 1, SW2 trunk uses native VLAN 99",2,native-vlan-mismatch,Medium
+CASE-004,VLAN,"PC4 receives IP 10.0.1.50/24 from DHCP but should be on 192.168.30.0/24 network","SW1 with VLAN 1 (10.0.1.0/24) and VLAN 30 (192.168.30.0/24); PC4 on Fa0/8 should be VLAN 30",">>> show vlan brief
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/1, Fa0/2, Fa0/8
+30   Accounting                       active    Fa0/12, Fa0/13
+>>> show interfaces Fa0/8 switchport
+Name: Fa0/8
+Switchport: Enabled
+Administrative Mode: static access
+Operational Mode: static access
+Access Mode VLAN: 1 (default)
+Voice VLAN: none
+>>> ipconfig (PC4)
+IPv4 Address. . . . . . . : 10.0.1.50
+Subnet Mask . . . . . . . : 255.255.255.0
+Default Gateway . . . . . : 10.0.1.1","Port Fa0/8 is assigned to VLAN 1 instead of VLAN 30; PC4 gets DHCP from wrong pool",2,access-port-vlan,Easy
+CASE-005,GATEWAY,"PC1 can ping 192.168.1.1 (local router) and 192.168.1.20 (local PC2) but cannot ping 10.0.0.1 on remote network","Simple 2-router topology; R1 (192.168.1.1/24) — R2 (10.0.0.1/24); PC1 on R1 LAN",">>> ipconfig (PC1)
+IPv4 Address. . . . . . . : 192.168.1.10
+Subnet Mask . . . . . . . : 255.255.255.0
+Default Gateway . . . . . : 0.0.0.0
+>>> ping 192.168.1.1
+Reply from 192.168.1.1: bytes=32 time<1ms TTL=255
+>>> ping 10.0.0.1
+Request timed out.","PC1 has no default gateway configured (0.0.0.0); packets to remote subnets are not forwarded",3,default-gateway,Easy
+CASE-006,GATEWAY,"PC1 cannot reach the router or any remote host despite being on the correct subnet","R1 Gi0/0 is 192.168.1.1/24; PC1 is 192.168.1.10/24 with gateway 192.168.1.254",">>> ipconfig (PC1)
+IPv4 Address. . . . . . . : 192.168.1.10
+Subnet Mask . . . . . . . : 255.255.255.0
+Default Gateway . . . . . : 192.168.1.254
+>>> show ip interface brief (R1)
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     192.168.1.1     YES manual up                    up
+GigabitEthernet0/1     10.0.0.1        YES manual up                    up
+>>> ping 192.168.1.1 (from PC1)
+Request timed out.","Default gateway 192.168.1.254 does not match any router interface; R1 Gi0/0 is 192.168.1.1",3,default-gateway,Easy
+CASE-007,GATEWAY,"PC1 (172.16.0.10/16) cannot reach any host outside the local LAN","R1 Gi0/0 is 172.16.0.1/16 on LAN; PC1 gateway set to 10.0.0.1 which is on a different subnet",">>> ipconfig (PC1)
+IPv4 Address. . . . . . . : 172.16.0.10
+Subnet Mask . . . . . . . : 255.255.0.0
+Default Gateway . . . . . : 10.0.0.1
+>>> show ip interface brief (R1)
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     172.16.0.1      YES manual up                    up
+Serial0/0/0            203.0.113.1     YES manual up                    up
+>>> ping 172.16.0.1 (from PC1)
+Reply from 172.16.0.1: bytes=32 time<1ms TTL=255","Gateway 10.0.0.1 is not in the 172.16.0.0/16 subnet; PC1 can reach the router directly but ARP for gateway fails",3,gateway-subnet,Medium
+CASE-008,GATEWAY,"VLAN 10 hosts can reach the router but VLAN 20 hosts cannot reach any other VLAN through router-on-a-stick","R1 with Gi0/0.10 and Gi0/0.20 subinterfaces; SW1 trunking to R1; VLAN 10 and VLAN 20 hosts present",">>> show ip interface brief (R1)
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     unassigned      YES unset  up                    up
+GigabitEthernet0/0.10  192.168.10.1    YES manual up                    up
+GigabitEthernet0/0.20  192.168.20.1    YES manual administratively down down
+>>> show running-config interface Gi0/0.20
+interface GigabitEthernet0/0.20
+ encapsulation dot1Q 20
+ ip address 192.168.20.1 255.255.255.0
+ shutdown
+>>> ping 192.168.20.1 (from VLAN 20 host)
+Request timed out.","Subinterface Gi0/0.20 is administratively shut down; inter-VLAN routing for VLAN 20 is disabled",3,inter-vlan-routing,Hard
+CASE-009,DHCP,"New hosts on 192.168.1.0/24 subnet receive APIPA addresses (169.254.x.x)","R1 acts as DHCP server for 192.168.1.0/24; pool range 192.168.1.100 to 192.168.1.110; 11 hosts already connected",">>> show ip dhcp pool
+Pool OFFICE :
+ Utilization mark (high/low)    : 100 / 0
+ Subnet size (first/next)       : 0 / 0
+ Total addresses                : 11
+ Leased addresses               : 11
+ Pending event                  : none
+ 1 subnet is currently in the pool :
+ Current index        IP address range                    Leased addresses
+ 192.168.1.111        192.168.1.100  - 192.168.1.110      11
+>>> show ip dhcp binding
+IP address       Client-ID/              Lease expiration        Type
+                 Hardware address
+192.168.1.100    0100.1234.5601          Aug 31 2026 08:00 AM    Automatic
+192.168.1.101    0100.1234.5602          Aug 31 2026 08:00 AM    Automatic
+192.168.1.110    0100.1234.5611          Aug 31 2026 08:00 AM    Automatic","DHCP pool is 100% utilized (11/11 addresses leased); no addresses available for new hosts",7,dhcp-pool-exhaustion,Medium
+CASE-010,DHCP,"Hosts on 10.0.2.0/24 subnet (behind R2) cannot obtain DHCP addresses; DHCP server is on R1","R1 (DHCP server, 10.0.1.0/24) — R2 (10.0.2.0/24 LAN); R2 Gi0/0 faces the 10.0.2.0/24 hosts",">>> show running-config interface Gi0/0 (R2)
+interface GigabitEthernet0/0
+ ip address 10.0.2.1 255.255.255.0
+ no shutdown
+>>> show running-config | section ip dhcp (R1)
+ip dhcp excluded-address 10.0.2.1 10.0.2.10
+ip dhcp pool REMOTE_LAN
+ network 10.0.2.0 255.255.255.0
+ default-router 10.0.2.1
+ dns-server 8.8.8.8
+>>> show ip interface Gi0/0 (R2)
+GigabitEthernet0/0 is up, line protocol is up
+  Internet address is 10.0.2.1/24
+  Broadcast address is 255.255.255.255
+  Helper address is not set","R2 Gi0/0 is missing 'ip helper-address' pointing to R1; DHCP Discover broadcasts from 10.0.2.0/24 are not relayed",3,dhcp-relay,Medium
+CASE-011,DHCP,"DHCP clients receive IP addresses that conflict with the router interface 192.168.1.1","R1 Gi0/0 is 192.168.1.1/24; DHCP pool starts at 192.168.1.1",">>> show running-config | section ip dhcp (R1)
+ip dhcp pool LAN_POOL
+ network 192.168.1.0 255.255.255.0
+ default-router 192.168.1.1
+ dns-server 8.8.8.8
+>>> show ip dhcp conflict
+IP address        Detection method   Detection time
+192.168.1.1       Gratuitous ARP     Aug 30 2026 10:15 AM
+>>> show ip interface brief (R1)
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     192.168.1.1     YES manual up                    up","No 'ip dhcp excluded-address' for 192.168.1.1; DHCP pool can assign the router's own interface IP causing conflicts",7,dhcp-excluded-address,Easy
+CASE-012,DHCP,"Hosts receive DHCP addresses but cannot reach any network outside 192.168.5.0/24","R1 serves DHCP for 192.168.5.0/24; default-router in pool set to 192.168.5.100 instead of 192.168.5.1",">>> show running-config | section ip dhcp (R1)
+ip dhcp excluded-address 192.168.5.1 192.168.5.10
+ip dhcp pool BRANCH
+ network 192.168.5.0 255.255.255.0
+ default-router 192.168.5.100
+ dns-server 8.8.8.8
+>>> show ip interface brief (R1)
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     192.168.5.1     YES manual up                    up
+Serial0/0/0            203.0.113.1     YES manual up                    up
+>>> ipconfig (PC1)
+IPv4 Address. . . . . . . : 192.168.5.11
+Subnet Mask . . . . . . . : 255.255.255.0
+Default Gateway . . . . . : 192.168.5.100","DHCP pool default-router is 192.168.5.100 but router interface is 192.168.5.1; clients get wrong gateway via DHCP",3,dhcp-default-router,Medium
+CASE-013,DNS,"PC1 cannot browse websites by name; pinging 8.8.8.8 by IP works fine","Single LAN with R1 as gateway; DNS server at 192.168.1.5; PC1 configured with wrong DNS IP",">>> ipconfig /all (PC1)
+IPv4 Address. . . . . . . : 192.168.1.20
+Subnet Mask . . . . . . . : 255.255.255.0
+Default Gateway . . . . . : 192.168.1.1
+DNS Servers . . . . . . . : 192.168.1.50
+>>> nslookup www.example.com (from PC1)
+Server:    192.168.1.50
+Address:   192.168.1.50#53
+*** Request to 192.168.1.50 timed out
+>>> ping 8.8.8.8 (from PC1)
+Reply from 8.8.8.8: bytes=32 time=20ms TTL=54","DNS server IP on PC1 is 192.168.1.50 but actual DNS server is at 192.168.1.5; typo in DNS configuration",7,dns-server-config,Easy
+CASE-014,DNS,"All hosts on 192.168.1.0/24 cannot resolve DNS names; DNS server 192.168.1.5 is reachable by IP from the router but not from hosts","R1 has ACL 101 applied inbound on Gi0/0 (LAN-facing); DNS server on 192.168.1.5",">>> show access-lists (R1)
+Extended IP access list 101
+    10 permit tcp 192.168.1.0 0.0.0.255 any eq 80
+    20 permit tcp 192.168.1.0 0.0.0.255 any eq 443
+    30 permit icmp any any
+>>> show running-config interface Gi0/0 (R1)
+interface GigabitEthernet0/0
+ ip address 192.168.1.1 255.255.255.0
+ ip access-group 101 in
+ no shutdown
+>>> ping 192.168.1.5 (from PC1)
+Reply from 192.168.1.5: bytes=32 time<1ms TTL=128","ACL 101 permits only TCP 80, 443, and ICMP; UDP port 53 (DNS) is implicitly denied",7,acl-dns-block,Medium
+CASE-015,DNS,"nslookup for 'fileserver.lab.local' fails; all other names resolve correctly","Internal DNS server at 192.168.1.5 serving lab.local zone; fileserver recently added at 192.168.1.50",">>> nslookup fileserver.lab.local (from PC1)
+Server:    192.168.1.5
+Address:   192.168.1.5#53
+*** 192.168.1.5 can't find fileserver.lab.local: NXDOMAIN
+>>> nslookup webserver.lab.local (from PC1)
+Server:    192.168.1.5
+Address:   192.168.1.5#53
+Name:      webserver.lab.local
+Address:   192.168.1.40
+>>> ping 192.168.1.50 (from PC1)
+Reply from 192.168.1.50: bytes=32 time<1ms TTL=128","DNS server is missing the A record for fileserver.lab.local; the host exists (pingable by IP) but is not registered in DNS",7,dns-a-record,Easy
+CASE-016,ROUTING,"R1 cannot reach the 10.0.2.0/24 network behind R2; connected and local routes are present","R1 (Gi0/0: 192.168.1.1/24, S0/0/0: 172.16.0.1/30) — R2 (S0/0/0: 172.16.0.2/30, Gi0/0: 10.0.2.1/24)",">>> show ip route (R1)
+Gateway of last resort is not set
+C    172.16.0.0/30 is directly connected, Serial0/0/0
+L    172.16.0.1/32 is directly connected, Serial0/0/0
+C    192.168.1.0/24 is directly connected, GigabitEthernet0/0
+L    192.168.1.1/32 is directly connected, GigabitEthernet0/0
+>>> ping 10.0.2.1 (from R1)
+Type escape sequence to abort.
+!!!!!
+Success rate is 0 percent (0/5)
+>>> show ip route (R2)
+C    10.0.2.0/24 is directly connected, GigabitEthernet0/0
+L    10.0.2.1/32 is directly connected, GigabitEthernet0/0
+C    172.16.0.0/30 is directly connected, Serial0/0/0
+L    172.16.0.2/32 is directly connected, Serial0/0/0","R1 has no static route to 10.0.2.0/24 via 172.16.0.2; the network is unreachable from R1",3,static-routing,Easy
+CASE-017,ROUTING,"Hosts in the first half of 10.0.2.0/24 (10.0.2.1-127) are reachable from R1 but hosts 10.0.2.128-254 are not","R1 — R2; R1 has static route to 10.0.2.0 with /25 mask instead of /24",">>> show ip route static (R1)
+S    10.0.2.0/25 [1/0] via 172.16.0.2
+>>> show ip route (R2)
+C    10.0.2.0/24 is directly connected, GigabitEthernet0/0
+L    10.0.2.1/32 is directly connected, GigabitEthernet0/0
+C    172.16.0.0/30 is directly connected, Serial0/0/0
+L    172.16.0.2/32 is directly connected, Serial0/0/0
+>>> ping 10.0.2.200 (from R1)
+Type escape sequence to abort.
+!!!!!
+Success rate is 0 percent (0/5)","Static route on R1 uses /25 mask (255.255.255.128) instead of /24; only 10.0.2.0-127 is routable",3,static-route-mask,Medium
+CASE-018,ROUTING,"OSPF adjacency between R1 and R2 not forming; neighbors stuck in INIT state","R1 (area 0) and R2 (area 1) connected via S0/0/0 point-to-point link",">>> show ip ospf neighbor (R1)
+>>> show ip ospf interface Serial0/0/0 (R1)
+Serial0/0/0 is up, line protocol is up
+  Internet Address 172.16.0.1/30, Area 0
+  Process ID 1, Router ID 1.1.1.1
+  Network Type POINT_TO_POINT, Cost: 64
+  Neighbor Count is 0, Adjacent neighbor count is 0
+>>> show ip ospf interface Serial0/0/0 (R2)
+Serial0/0/0 is up, line protocol is up
+  Internet Address 172.16.0.2/30, Area 1
+  Process ID 1, Router ID 2.2.2.2
+  Network Type POINT_TO_POINT, Cost: 64
+  Neighbor Count is 0, Adjacent neighbor count is 0","OSPF area mismatch on the shared link: R1 has S0/0/0 in Area 0, R2 has S0/0/0 in Area 1; adjacency cannot form",3,ospf-area-mismatch,Hard
+CASE-019,ROUTING,"R1 and R2 are EIGRP neighbors on other links but not forming adjacency on the 172.16.0.0/30 link","R1 EIGRP AS 100; R2 EIGRP AS 200 on interface S0/0/0",">>> show ip eigrp neighbors (R1)
+EIGRP-IPv4 Neighbors for AS(100)
+>>> show running-config | section router eigrp (R1)
+router eigrp 100
+ network 172.16.0.0 0.0.0.3
+ network 192.168.1.0
+ no auto-summary
+>>> show running-config | section router eigrp (R2)
+router eigrp 200
+ network 172.16.0.0 0.0.0.3
+ network 10.0.2.0
+ no auto-summary","EIGRP AS number mismatch: R1 uses AS 100, R2 uses AS 200; neighbors cannot form on shared 172.16.0.0/30 link",3,eigrp-as-mismatch,Hard
+CASE-020,ROUTING,"10.0.3.0/24 network behind R2 not appearing in OSPF routing table on R1 despite adjacency being Full","R1 — R2 in OSPF Area 0; R2 Gi0/1 (10.0.3.0/24) not advertised in OSPF",">>> show ip ospf neighbor (R1)
+Neighbor ID     Pri   State      Dead Time   Address         Interface
+2.2.2.2           0   FULL/  -   00:00:39    172.16.0.2      Serial0/0/0
+>>> show ip route ospf (R1)
+O    10.0.2.0/24 [110/65] via 172.16.0.2, 00:30:00, Serial0/0/0
+>>> show running-config | section router ospf (R2)
+router ospf 1
+ router-id 2.2.2.2
+ network 172.16.0.0 0.0.0.3 area 0
+ network 10.0.2.0 0.0.0.255 area 0
+>>> show ip interface brief (R2)
+Interface              IP-Address      OK? Method Status                Protocol
+GigabitEthernet0/0     10.0.2.1        YES manual up                    up
+GigabitEthernet0/1     10.0.3.1        YES manual up                    up
+Serial0/0/0            172.16.0.2      YES manual up                    up","R2 OSPF configuration missing 'network 10.0.3.0 0.0.0.255 area 0'; Gi0/1 subnet not advertised to OSPF",3,ospf-network-statement,Medium
+CASE-021,ACL,"All traffic from 192.168.1.0/24 is blocked when passing through R1 Gi0/0","R1 with ACL 10 applied inbound on Gi0/0; ACL denies a specific host but has no permit statement",">>> show access-lists (R1)
+Standard IP access list 10
+    10 deny   192.168.1.100
+>>> show running-config interface Gi0/0 (R1)
+interface GigabitEthernet0/0
+ ip address 192.168.1.1 255.255.255.0
+ ip access-group 10 in
+ no shutdown
+>>> ping 10.0.2.1 (from 192.168.1.20)
+Request timed out.","ACL 10 only has a deny entry for 192.168.1.100 and no permit statement; implicit deny all at the end blocks all other traffic",4,acl-implicit-deny,Easy
+CASE-022,ACL,"ACL 110 intended to block inbound Telnet from 10.0.0.0/8 but instead blocks outbound traffic from the LAN","R1 Gi0/0 is LAN-facing (192.168.1.0/24); ACL 110 applied outbound instead of inbound on S0/0/0",">>> show access-lists (R1)
+Extended IP access list 110
+    10 deny   tcp 10.0.0.0 0.255.255.255 any eq 23
+    20 permit ip any any
+>>> show running-config interface Gi0/0 (R1)
+interface GigabitEthernet0/0
+ ip address 192.168.1.1 255.255.255.0
+ ip access-group 110 out
+ no shutdown
+>>> show running-config interface Serial0/0/0 (R1)
+interface Serial0/0/0
+ ip address 203.0.113.1 255.255.255.252
+ no shutdown","ACL 110 is applied outbound on Gi0/0 (LAN) instead of inbound on S0/0/0 (WAN); traffic direction is reversed",4,acl-direction,Medium
+CASE-023,ACL,"ACL blocks the entire 192.168.1.0/24 subnet instead of just the /28 block 192.168.1.0-15","R1 ACL 120 should block only 192.168.1.0/28 but wildcard mask is wrong",">>> show access-lists (R1)
+Extended IP access list 120
+    10 deny   ip 192.168.1.0 0.0.0.255 any (3800 matches)
+    20 permit ip any any (200 matches)
+>>> show running-config | include access-list 120
+access-list 120 deny ip 192.168.1.0 0.0.0.255 any
+access-list 120 permit ip any any","Wildcard mask 0.0.0.255 matches entire /24 subnet; should be 0.0.0.15 to match only 192.168.1.0/28",4,acl-wildcard-mask,Medium
+CASE-024,ACL,"Hosts on 192.168.1.0/24 can initiate ICMP pings to 10.0.2.0/24 but replies never come back","R2 has ACL 130 inbound on Gi0/0 permitting only outbound-initiated TCP traffic; no ICMP return rule",">>> show access-lists (R2)
+Extended IP access list 130
+    10 permit tcp 10.0.2.0 0.0.0.255 any established
+    20 permit tcp 10.0.2.0 0.0.0.255 any eq 80
+    30 permit tcp 10.0.2.0 0.0.0.255 any eq 443
+>>> show running-config interface Serial0/0/0 (R2)
+interface Serial0/0/0
+ ip address 172.16.0.2 255.255.255.252
+ ip access-group 130 in
+ no shutdown
+>>> ping 10.0.2.10 (from 192.168.1.10)
+Request timed out.","ACL 130 has no permit entry for ICMP echo-reply; return pings from 192.168.1.0/24 are blocked by implicit deny",4,acl-return-traffic,Hard
+CASE-025,NAT,"Internal hosts (192.168.1.0/24) cannot access the internet through R1; NAT translations table is empty","R1 Gi0/0 (inside, 192.168.1.1/24) — S0/0/0 (outside, 203.0.113.1/30); NAT overload configured",">>> show ip nat translations (R1)
+>>> show running-config | section ip nat (R1)
+ip nat inside source list 1 interface Serial0/0/0 overload
+access-list 1 permit 192.168.1.0 0.0.0.255
+>>> show running-config interface GigabitEthernet0/0 (R1)
+interface GigabitEthernet0/0
+ ip address 192.168.1.1 255.255.255.0
+ no shutdown
+>>> show running-config interface Serial0/0/0 (R1)
+interface Serial0/0/0
+ ip address 203.0.113.1 255.255.255.252
+ no shutdown","Interfaces are missing 'ip nat inside' and 'ip nat outside' designations; NAT cannot translate without interface roles",3,nat-inside-outside,Medium
+CASE-026,NAT,"First 4 internal hosts can access the internet but the 5th host gets 'destination unreachable'","R1 NAT pool has only 4 public IPs; no overload (PAT); 5th host has no available translation",">>> show ip nat translations (R1)
+Pro Inside global      Inside local       Outside local      Outside global
+--- 203.0.113.10       192.168.1.10       ---                ---
+--- 203.0.113.11       192.168.1.11       ---                ---
+--- 203.0.113.12       192.168.1.12       ---                ---
+--- 203.0.113.13       192.168.1.13       ---                ---
+>>> show ip nat statistics (R1)
+Total active translations: 4 (4 static, 0 dynamic; 0 extended)
+Outside interfaces: Serial0/0/0
+Inside interfaces: GigabitEthernet0/0
+Hits: 4000  Misses: 350
+Pool NAT_POOL: netmask 255.255.255.252
+    start 203.0.113.10 end 203.0.113.13
+    type generic, total addresses 4, allocated 4 (100%), misses 350","NAT pool NAT_POOL is exhausted (4/4 addresses allocated); no overload keyword configured so no PAT fallback",3,nat-pool-exhaustion,Hard
+CASE-027,NAT,"Only one internal host can access the internet at a time through NAT","R1 NAT configured with 'ip nat inside source list 1 pool SINGLE' without overload keyword; pool has 1 IP",">>> show ip nat translations (R1)
+Pro Inside global      Inside local       Outside local      Outside global
+--- 203.0.113.10       192.168.1.10       ---                ---
+>>> show running-config | section ip nat (R1)
+ip nat pool SINGLE 203.0.113.10 203.0.113.10 netmask 255.255.255.252
+ip nat inside source list 1 pool SINGLE
+access-list 1 permit 192.168.1.0 0.0.0.255
+>>> show ip nat statistics (R1)
+Total active translations: 1 (0 static, 1 dynamic; 0 extended)
+Pool SINGLE: netmask 255.255.255.252
+    start 203.0.113.10 end 203.0.113.10
+    type generic, total addresses 1, allocated 1 (100%), misses 45","NAT source command missing 'overload' keyword; single pool IP can only map to one inside host at a time (no PAT)",3,pat-overload,Medium
+CASE-028,WIRELESS,"Laptop cannot associate with the 'CorpWiFi' SSID; authentication failure message displayed","Cisco WLC with SSID 'CorpWiFi' using WPA2-PSK; laptop configured with wrong passphrase",">>> show wlan summary (WLC)
+WLAN ID  WLAN Profile Name    Status    Interface Name
+1        CorpWiFi             Enabled   management
+>>> show wlan 1 (WLC)
+WLAN Identifier: 1
+Profile Name: CorpWiFi
+SSID: CorpWiFi
+Status: Enabled
+Security: WPA2/PSK
+PSK Format: ASCII
+>>> Wireless adapter status (Laptop)
+SSID: CorpWiFi
+Security: WPA2-Personal
+Status: Authentication Failed
+Signal: -45 dBm","WPA2-PSK passphrase on the laptop does not match the WLC configuration; authentication handshake fails",2,wireless-authentication,Easy
+CASE-029,WIRELESS,"Users near AP2 report very slow Wi-Fi speeds and frequent disconnections; AP1 nearby works fine","Two APs in adjacent rooms; AP1 on channel 1, AP2 on channel 2; both 2.4GHz",">>> show ap channel (WLC)
+AP Name          Slot  Channel  Channel Width  TxPower
+AP1              0     1        20 MHz         3 (17 dBm)
+AP2              0     2        20 MHz         3 (17 dBm)
+>>> show ap summary (WLC)
+AP Name          AP Model         Status    IP Address      Clients
+AP1              AIR-CAP2702I     Enabled   192.168.1.41    12
+AP2              AIR-CAP2702I     Enabled   192.168.1.42    8
+>>> show 802.11b (WLC)
+802.11b Network: Enabled
+11gSupport: Enabled
+Channel Overlap: Detected between AP1 (ch1) and AP2 (ch2)","AP1 (channel 1) and AP2 (channel 2) have co-channel interference; 2.4GHz non-overlapping channels are 1, 6, 11",1,wireless-channel-overlap,Medium
+CASE-030,WIRELESS,"AP3 shows solid red LED and does not broadcast any SSID; WLC does not list AP3 in joined APs","AP3 on VLAN 100 (management); WLC on VLAN 50; no inter-VLAN routing between VLAN 100 and VLAN 50",">>> show ap summary (WLC)
+AP Name          AP Model         Status    IP Address      Clients
+AP1              AIR-CAP2702I     Joined    192.168.50.41   15
+AP2              AIR-CAP2702I     Joined    192.168.50.42   10
+>>> show vlan brief (SW1)
+VLAN Name                             Status    Ports
+---- -------------------------------- --------- -------------------------------
+1    default                          active    Fa0/1
+50   WLC-Mgmt                         active    Fa0/10
+100  AP-Mgmt                          active    Fa0/20
+>>> show interfaces Fa0/20 switchport (SW1)
+Name: Fa0/20
+Switchport: Enabled
+Administrative Mode: static access
+Access Mode VLAN: 100 (AP-Mgmt)
+>>> ping 192.168.50.10 (from AP3 console, 192.168.100.43)
+Request timed out.","AP3 is on VLAN 100 and WLC is on VLAN 50; no inter-VLAN routing configured so AP3 cannot reach the WLC to join",3,wireless-wlc-join,Hard
