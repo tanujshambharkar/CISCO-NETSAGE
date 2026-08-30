@@ -373,3 +373,316 @@ Administrative Mode: static access
 Access Mode VLAN: 100 (AP-Mgmt)
 >>> ping 192.168.50.10 (from AP3 console, 192.168.100.43)
 Request timed out.","AP3 is on VLAN 100 and WLC is on VLAN 50; no inter-VLAN routing configured so AP3 cannot reach the WLC to join",3,wireless-wlc-join,Hard
+CASE-031,STP,"All traffic between SW1 and SW2 takes a suboptimal path through SW3 despite a direct 10Gbps link between SW1 and SW2","Three-switch triangle: SW1 (priority 32769) — SW2 (priority 4096) — SW3 (priority 32769); SW2 has lowest priority and becomes root",">>> show spanning-tree (SW1)
+VLAN0001
+  Spanning tree enabled protocol ieee
+  Root ID    Priority    4096
+             Address     0011.2233.4455
+             Cost        19
+             Port        1 (GigabitEthernet0/1)
+             Hello Time   2 sec  Max Age 20 sec  Forward Delay 15 sec
+
+  Bridge ID  Priority    32769  (priority 32768 sys-id-ext 1)
+             Address     0066.7788.9900
+>>> show spanning-tree vlan 1 root (SW1)
+Root Hello  Max Fwd
+VLAN ID     Cost  Time  Age  Dly  Root Port
+---------- ----- ----- ---- ---- ---- ----------
+VLAN0001   4096  19    2    20   15   Gi0/1","SW2 (a distribution switch) was elected root bridge due to lowest priority (4096); the intended root should be SW1 (the core switch) — SW1 priority needs to be lowered below 4096",2,stp-root-election,Medium
+CASE-032,STP,"Network experiences broadcast storms every few minutes; SW1 and SW2 both show high CPU utilization and flapping MAC addresses","SW1 Gi0/1 connected to SW2 Gi0/1 (primary link); SW1 Gi0/2 connected to SW2 Gi0/2 (redundant link); both ports forwarding",">>> show spanning-tree interface Gi0/2 (SW1)
+Vlan                Role Sts Cost      Prio.Nbr Type
+------------------- ---- --- --------- -------- ----
+VLAN0001            Desg FWD 4         128.2    P2p
+>>> show spanning-tree interface Gi0/2 (SW2)
+Vlan                Role Sts Cost      Prio.Nbr Type
+------------------- ---- --- --------- -------- ----
+VLAN0001            Desg FWD 4         128.2    P2p
+>>> show processes cpu | include five
+CPU utilization for five seconds: 92%/85%
+>>> show mac address-table count
+MAC Entries: 14523 (flooding detected)","Both Gi0/2 ports on SW1 and SW2 are in Forwarding state (both Designated) creating a Layer 2 loop; one port should be Blocking — STP may be disabled or misconfigured on the redundant link",2,stp-loop,Hard
+CASE-033,STP,"PC on Fa0/5 loses connectivity every time it boots up; port goes to err-disabled state and then recovers after 5 minutes","SW1 with BPDU Guard enabled on all access ports; a small unmanaged switch is connected behind Fa0/5",">>> show interfaces status err-disabled (SW1)
+Port      Name     Status       Reason           Err-disabled Vlans
+Fa0/5              err-disabled bpdu-guard       --
+>>> show spanning-tree interface Fa0/5
+Fa0/5 is in err-disabled state
+>>> show logging | include BPDU
+%SPANTREE-2-BLOCK_BPDUGUARD: Received BPDU on port Fa0/5 with BPDU Guard enabled. Disabling port.
+>>> show running-config interface Fa0/5 (SW1)
+interface FastEthernet0/5
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ no shutdown","BPDU Guard is enabled on Fa0/5 which has an unmanaged switch connected; the switch sends BPDUs which trigger BPDU Guard and disable the port",2,stp-bpduguard,Medium
+CASE-034,HSRP,"Hosts on VLAN 10 using gateway 192.168.10.254 intermittently lose connectivity; both R1 and R2 claim to be HSRP Active","R1 and R2 running HSRP group 10 on VLAN 10 interfaces; standby IP is 192.168.10.254",">>> show standby brief (R1)
+                     P indicates configured to preempt.
+Interface   Grp  Pri P State   Active          Standby         Virtual IP
+Gi0/0       10   110 P Active  local           unknown         192.168.10.254
+>>> show standby brief (R2)
+                     P indicates configured to preempt.
+Interface   Grp  Pri P State   Active          Standby         Virtual IP
+Gi0/0       10   110 P Active  local           unknown         192.168.10.254
+>>> show standby Gi0/0 10 (R1)
+GigabitEthernet0/0 - Group 10
+  State is Active
+  Virtual IP address is 192.168.10.254
+  Active virtual MAC address is 0000.0c07.ac0a
+  Hello time 3 sec, hold time 10 sec
+  Preemption enabled
+  Priority 110
+>>> show standby Gi0/0 10 (R2)
+GigabitEthernet0/0 - Group 10
+  State is Active
+  Virtual IP address is 192.168.10.254
+  Active virtual MAC address is 0000.0c07.ac0a
+  Hello time 3 sec, hold time 10 sec
+  Preemption enabled
+  Priority 110","Both R1 and R2 have identical HSRP priority (110) with preemption enabled and neither can see the other's hello packets (likely an ACL or VLAN issue blocking multicast 224.0.0.2); both declare Active causing a split-brain scenario",3,hsrp-dual-active,Hard
+CASE-035,HSRP,"After R1 fails and recovers, hosts still point to R1 as gateway but R2 is now Active HSRP; connectivity is restored only after clearing ARP on hosts","R1 (priority 110, preempt) and R2 (priority 100) for HSRP group 10; R1 recovers but does not preempt back",">>> show standby brief (R1)
+                     P indicates configured to preempt.
+Interface   Grp  Pri P State   Active          Standby         Virtual IP
+Gi0/0       10   110   Standby 192.168.10.2    local           192.168.10.254
+>>> show standby brief (R2)
+Interface   Grp  Pri P State   Active          Standby         Virtual IP
+Gi0/0       10   100   Active  local           192.168.10.1    192.168.10.254
+>>> show running-config interface Gi0/0 (R1)
+interface GigabitEthernet0/0
+ ip address 192.168.10.1 255.255.255.0
+ standby 10 ip 192.168.10.254
+ standby 10 priority 110
+ no shutdown","R1 has higher priority (110) but 'standby 10 preempt' is not configured; after recovery R1 stays in Standby state and does not reclaim Active role despite higher priority",3,hsrp-no-preempt,Medium
+CASE-036,ETHERCHANNEL,"EtherChannel between SW1 and SW2 not forming; individual links alternate between up and down states","SW1 Gi0/1-2 configured with LACP active; SW2 Gi0/1-2 configured with PAgP desirable",">>> show etherchannel summary (SW1)
+Flags:  D - down        P - bundled in port-channel
+        I - stand-alone s - suspended
+        H - Hot-standby (LACP only)
+Number of channel-groups in use: 1
+Group  Port-channel  Protocol    Ports
+------+-------------+-----------+-------------------------------------------
+1      Po1(SD)         LACP      Gi0/1(I) Gi0/2(I)
+>>> show etherchannel summary (SW2)
+Group  Port-channel  Protocol    Ports
+------+-------------+-----------+-------------------------------------------
+1      Po1(SD)         PAgP      Gi0/1(I) Gi0/2(I)
+>>> show running-config interface range Gi0/1-2 (SW1)
+interface range GigabitEthernet0/1-2
+ channel-group 1 mode active
+>>> show running-config interface range Gi0/1-2 (SW2)
+interface range GigabitEthernet0/1-2
+ channel-group 1 mode desirable","EtherChannel protocol mismatch: SW1 uses LACP (mode active) but SW2 uses PAgP (mode desirable); both sides must use the same protocol (LACP active/passive or PAgP desirable/auto)",2,etherchannel-protocol,Medium
+CASE-037,ETHERCHANNEL,"EtherChannel Po1 is up between SW1 and SW2 but traffic is unevenly distributed; one link carries 90% of the traffic","SW1 and SW2 with 4-port EtherChannel; load-balance set to src-mac but all traffic originates from a single server",">>> show etherchannel load-balance (SW1)
+EtherChannel Load-Balancing Configuration:
+        src-mac
+>>> show etherchannel port-channel (SW1)
+Port-channel: Po1
+  Age of the Port-channel = 02d:14h:30m
+  Logical slot/port = 2/1
+  Number of ports = 4
+  GC                   = 0x00000000
+  Port state           = Port-channel Ag-Inuse
+  Ports in the Port-channel:
+  Index   Load   Port     EC state
+  ------+------+------+------------
+    0     FF     Gi0/1    Active
+    1     00     Gi0/2    Active
+    2     00     Gi0/3    Active
+    3     00     Gi0/4    Active","Load-balancing algorithm is src-mac but all traffic comes from a single server MAC; all frames hash to the same physical link (Gi0/1 at 100% load); change to src-dst-ip or src-dst-mac for better distribution",2,etherchannel-loadbalance,Medium
+CASE-038,SECURITY,"Host connected to Fa0/10 is blocked after a second device was plugged into the same port via a hub; port shows err-disabled","SW1 with port security on Fa0/10; max MAC set to 1; violation mode shutdown",">>> show port-security interface Fa0/10 (SW1)
+Port Security              : Enabled
+Port Status                : Secure-shutdown
+Violation Mode             : Shutdown
+Aging Time                 : 0 mins
+Aging Type                 : Absolute
+Maximum MAC Addresses      : 1
+Total MAC Addresses        : 1
+Configured MAC Addresses   : 0
+Sticky MAC Addresses       : 0
+Last Source Address:Vlan   : 00AA.BB11.2233:10
+Security Violation Count   : 1
+>>> show interfaces Fa0/10 status (SW1)
+Port      Name     Status       Vlan       Duplex  Speed Type
+Fa0/10             err-disabled 10         auto    auto  10/100BaseTX
+>>> show logging | include SECURITY
+%PORT_SECURITY-2-PSECURE_VIOLATION: Security violation occurred, caused by MAC address 00CC.DD44.5566 on port FastEthernet0/10","Port security violation on Fa0/10: a second MAC address (00CC.DD44.5566) was learned but maximum is 1; violation mode is shutdown so the port is err-disabled",2,port-security-violation,Easy
+CASE-039,SECURITY,"Administrator cannot SSH into the router from the management station; connection is refused immediately","R1 with VTY lines configured; management station is on 192.168.1.0/24",">>> show running-config | section line vty (R1)
+line vty 0 4
+ password cisco123
+ login
+ transport input telnet
+>>> show ip ssh (R1)
+SSH Disabled - version 1.99
+%Please create RSA keys to enable SSH.
+>>> ssh -l admin 192.168.1.1 (from management station)
+Connection refused","VTY lines have 'transport input telnet' only — SSH is not enabled; additionally RSA keys have not been generated ('crypto key generate rsa') which is required for SSH to function",7,ssh-not-configured,Easy
+CASE-040,SECURITY,"Anyone can access the router console without entering a password; no authentication prompt appears","R1 with no console password configured",">>> show running-config | section line con (R1)
+line con 0
+ logging synchronous
+>>> show running-config | include enable secret
+enable secret 5 $1$mERr$hx5rVt7rPNoS4wqbXKX7m0
+>>> show running-config | include service password
+service password-encryption","Console line has no login or password configured; anyone with physical access to the router console port can access user EXEC mode without authentication",7,console-no-auth,Easy
+CASE-041,IPV6,"PC1 has an IPv6 address (2001:db8:1::10/64) and can ping the link-local address of R1 but cannot reach 2001:db8:2::0/64 on R2","R1 Gi0/0 has 2001:db8:1::1/64; R1 Gi0/1 has 2001:db8:2::1/64; ipv6 unicast-routing not enabled",">>> show ipv6 interface brief (R1)
+GigabitEthernet0/0     [up/up]
+    FE80::1
+    2001:DB8:1::1
+GigabitEthernet0/1     [up/up]
+    FE80::2
+    2001:DB8:2::1
+>>> show ipv6 route (R1)
+IPv6 Routing Table - default - 2 entries
+C   2001:DB8:1::/64 [0/0] via GigabitEthernet0/0, directly connected
+C   2001:DB8:2::/64 [0/0] via GigabitEthernet0/1, directly connected
+L   2001:DB8:1::1/128 [0/0] via GigabitEthernet0/0, receive
+L   2001:DB8:2::1/128 [0/0] via GigabitEthernet0/1, receive
+>>> show running-config | include ipv6 unicast
+(no output)
+>>> ping 2001:db8:2::1 (from PC1)
+Request timed out.","'ipv6 unicast-routing' is not enabled on R1; without this global command the router will not forward IPv6 packets between interfaces even though both subnets are directly connected",3,ipv6-unicast-routing,Medium
+CASE-042,IPV6,"PC1 can ping R1's global unicast address 2001:db8:1::1 but IPv6 auto-configuration gives PC1 only a link-local address (FE80::) and no global address","R1 Gi0/0 has 2001:db8:1::1/64 but no SLAAC or DHCPv6 configured",">>> ipconfig (PC1)
+IPv6 Address. . . . . . . : FE80::260:3EFF:FE11:2233%11
+Default Gateway . . . . . :
+>>> show ipv6 interface Gi0/0 (R1)
+GigabitEthernet0/0 is up, line protocol is up
+  IPv6 is enabled, link-local address is FE80::1
+  Global unicast address(es):
+    2001:DB8:1::1, subnet is 2001:DB8:1::/64
+  Joined group address(es):
+    FF02::1
+    FF02::2
+  ICMP redirects: enabled
+  ND DAD is enabled, number of DAD attempts: 1
+  ND router advertisements live for 1800 seconds
+  ND advertised default router preference is Medium
+  ND advertised reachable time is 0 (unspecified)
+  No RA suppression; RA interval 200 secs","PC1 gets only a link-local address; R1 is advertising RAs but PC1 has no global prefix — verify that 'ipv6 address 2001:db8:1::1/64' is configured (not 'ipv6 address 2001:db8:1::1 link-local') and check that RA suppression is not active on a per-VLAN basis",3,ipv6-slaac-no-global,Medium
+CASE-043,VLAN,"VLAN 20 exists on SW1 but not on SW2 despite both being in the same VTP domain; new VLANs created on SW1 do not propagate","SW1 (VTP Server) and SW2 (VTP Client) connected by trunk; VTP domain names differ",">>> show vtp status (SW1)
+VTP Version                     : 2
+Configuration Revision          : 15
+Maximum VLANs supported locally : 1005
+Number of existing VLANs        : 7
+VTP Operating Mode              : Server
+VTP Domain Name                 : CAMPUS
+VTP Pruning Mode                : Disabled
+>>> show vtp status (SW2)
+VTP Version                     : 2
+Configuration Revision          : 3
+Maximum VLANs supported locally : 1005
+Number of existing VLANs        : 5
+VTP Operating Mode              : Client
+VTP Domain Name                 : campus
+VTP Pruning Mode                : Disabled","VTP domain name mismatch: SW1 uses 'CAMPUS' (uppercase) and SW2 uses 'campus' (lowercase); VTP domain names are case-sensitive so SW2 is in a different VTP domain and does not receive VLAN updates",2,vtp-domain-mismatch,Medium
+CASE-044,VLAN,"Trunk link between SW1 and SW2 is stuck in 'not-trunking' state despite both sides being configured as 'dynamic auto'","SW1 Gi0/1 and SW2 Gi0/1 both set to 'switchport mode dynamic auto'",">>> show interfaces trunk (SW1)
+(no output — no trunk ports)
+>>> show interfaces Gi0/1 switchport (SW1)
+Name: Gi0/1
+Switchport: Enabled
+Administrative Mode: dynamic auto
+Operational Mode: static access
+Negotiation of Trunking: On
+Access Mode VLAN: 1 (default)
+>>> show interfaces Gi0/1 switchport (SW2)
+Name: Gi0/1
+Switchport: Enabled
+Administrative Mode: dynamic auto
+Operational Mode: static access
+Negotiation of Trunking: On
+Access Mode VLAN: 1 (default)","Both SW1 and SW2 are set to 'dynamic auto' which waits for the other side to initiate DTP negotiation; neither side initiates so the link stays as access — at least one side must be 'dynamic desirable' or 'trunk'",2,dtp-auto-auto,Medium
+CASE-045,DHCP,"Legitimate DHCP clients on VLAN 10 receive no IP address; DHCP server is on the same VLAN; show ip dhcp snooping binding is empty","SW1 has DHCP snooping enabled on VLAN 10; DHCP server is on a port that is not trusted",">>> show ip dhcp snooping (SW1)
+Switch DHCP snooping is enabled
+DHCP snooping is configured on following VLANs:
+10
+DHCP snooping is operational on following VLANs:
+10
+Insertion of option 82 is enabled
+>>> show ip dhcp snooping binding (SW1)
+MacAddress          IpAddress        Lease(sec)  Type           VLAN  Interface
+------------------  ---------------  ----------  -------------  ----  --------------------
+(empty)
+>>> show running-config interface Fa0/1 (SW1 — DHCP server port)
+interface FastEthernet0/1
+ switchport access vlan 10
+ switchport mode access
+ no shutdown
+>>> show logging | include DHCP
+%DHCP_SNOOPING-5-DHCP_SNOOPING_UNTRUSTED_PORT: DHCP_SNOOPING drop message on untrusted port, message type: DHCPOFFER, MAC: 0011.2233.4455","DHCP snooping is dropping DHCPOFFER from the server because Fa0/1 (the DHCP server port) is not configured as a trusted port; add 'ip dhcp snooping trust' to Fa0/1",2,dhcp-snooping-untrusted,Medium
+CASE-046,DHCP,"DHCP clients on a remote subnet behind R2 get APIPA addresses even though ip helper-address is configured; DHCP server logs show no incoming requests","R2 has ip helper-address; SW1 has DHCP snooping with option 82 enabled; DHCP server rejects option 82 packets",">>> show running-config interface Gi0/0 (R2)
+interface GigabitEthernet0/0
+ ip address 10.0.2.1 255.255.255.0
+ ip helper-address 10.0.1.5
+ no shutdown
+>>> show ip dhcp snooping (SW1)
+Switch DHCP snooping is enabled
+Insertion of option 82 is enabled
+>>> show logging (DHCP Server)
+%DHCPD-4-INVALID_OPTION82: Received DHCP packet with invalid relay agent information option (option 82) from 10.0.2.1
+>>> show ip dhcp server statistics (R1)
+Message              Received
+BOOTREQUEST          0
+DHCPDISCOVER         0","SW1 inserts DHCP option 82 into client requests; the DHCP server does not support or is not configured to handle option 82 and drops the packets — disable option 82 with 'no ip dhcp snooping information option' on SW1",7,dhcp-option82-rejected,Hard
+CASE-047,ROUTING,"OSPF adjacency between R1 and R2 goes up and down every 40 seconds; neighbors briefly reach FULL then drop","R1 and R2 connected via Serial0/0/0; R1 hello=5 dead=20; R2 hello=10 dead=40 (default)",">>> show ip ospf interface Serial0/0/0 (R1)
+Serial0/0/0 is up, line protocol is up
+  Internet Address 172.16.0.1/30, Area 0
+  Process ID 1, Router ID 1.1.1.1
+  Network Type POINT_TO_POINT, Cost: 64
+  Transmit Delay is 1 sec, State POINT_TO_POINT
+  Timer intervals configured, Hello 5, Dead 20, Wait 20, Retransmit 5
+>>> show ip ospf interface Serial0/0/0 (R2)
+Serial0/0/0 is up, line protocol is up
+  Internet Address 172.16.0.2/30, Area 0
+  Process ID 1, Router ID 2.2.2.2
+  Network Type POINT_TO_POINT, Cost: 64
+  Transmit Delay is 1 sec, State POINT_TO_POINT
+  Timer intervals configured, Hello 10, Dead 40, Wait 40, Retransmit 5
+>>> show ip ospf neighbor (R1)
+Neighbor ID     Pri   State      Dead Time   Address         Interface
+2.2.2.2           0   INIT/  -   00:00:18    172.16.0.2      Serial0/0/0","OSPF hello/dead timer mismatch: R1 has hello=5s/dead=20s but R2 has hello=10s/dead=40s; OSPF requires matching hello and dead intervals on both sides of a link for adjacency to form and remain stable",3,ospf-timer-mismatch,Medium
+CASE-048,ROUTING,"Routes redistributed from EIGRP into OSPF on R1 appear in OSPF routing table on R2 but with infinite metric and are not installed in the RIB","R1 redistributes EIGRP 100 into OSPF 1 without specifying a seed metric",">>> show ip route ospf (R2)
+(no EIGRP-redistributed routes visible)
+>>> show ip ospf database external (R2)
+OSPF Router with ID (2.2.2.2) (Process ID 1)
+
+                Type-5 AS External Link States
+
+  Link State ID: 10.10.10.0 (External Network Number)
+  Advertising Router: 1.1.1.1
+  LS Age: 45
+  Metric Type: 2 (Larger than any link state path)
+  Metric: 20
+  Forward Address: 0.0.0.0
+>>> show running-config | section router ospf (R1)
+router ospf 1
+ router-id 1.1.1.1
+ redistribute eigrp 100
+ network 172.16.0.0 0.0.0.3 area 0","OSPF redistribution of EIGRP routes missing 'subnets' keyword and explicit metric; without 'subnets' only classful networks are redistributed, and the forward address 0.0.0.0 may cause routing issues — use 'redistribute eigrp 100 subnets metric 20'",3,ospf-redistribute-metric,Hard
+CASE-049,NAT,"Static NAT mapping for web server (192.168.1.100 → 203.0.113.100) works, but no other internal hosts can access the internet via PAT","R1 has both static NAT and dynamic NAT (overload) configured; ACL 1 for dynamic NAT includes the web server IP",">>> show ip nat translations (R1)
+Pro Inside global      Inside local       Outside local      Outside global
+--- 203.0.113.100      192.168.1.100      ---                ---
+>>> show ip nat statistics (R1)
+Total active translations: 1 (1 static, 0 dynamic; 0 extended)
+Outside interfaces: Serial0/0/0
+Inside interfaces: GigabitEthernet0/0
+Hits: 500  Misses: 200
+Expired translations: 0
+Pool PAT_POOL: netmask 255.255.255.252
+    start 203.0.113.10 end 203.0.113.10
+    type generic, total addresses 1, allocated 0 (0%), misses 200
+>>> show running-config | section ip nat (R1)
+ip nat inside source static 192.168.1.100 203.0.113.100
+ip nat inside source list 1 pool PAT_POOL overload
+ip nat pool PAT_POOL 203.0.113.10 203.0.113.10 netmask 255.255.255.252
+access-list 1 permit 192.168.1.0 0.0.0.255","Static NAT for 192.168.1.100 takes precedence over dynamic NAT; the dynamic PAT pool shows 200 misses and 0 allocated — the ACL includes 192.168.1.100 which conflicts with the static entry; other hosts should be translating but the pool IP 203.0.113.10 may be unreachable or a routing issue exists on the return path",3,nat-static-conflict,Hard
+CASE-050,NAT,"NAT translations table shows entries but internet-bound traffic from 10.0.0.0/8 hosts is not being translated; only 192.168.1.0/24 hosts work","R1 NAT ACL permits only 192.168.1.0/24 but internal network includes 10.0.0.0/8 hosts behind R2",">>> show ip nat translations (R1)
+Pro Inside global      Inside local       Outside local      Outside global
+tcp 203.0.113.1:1024   192.168.1.10:3389  198.51.100.1:80    198.51.100.1:80
+tcp 203.0.113.1:1025   192.168.1.11:4455  198.51.100.2:443   198.51.100.2:443
+>>> show running-config | section ip nat (R1)
+ip nat inside source list 1 interface Serial0/0/0 overload
+access-list 1 permit 192.168.1.0 0.0.0.255
+>>> show ip route (R1)
+S    10.0.0.0/8 [1/0] via 172.16.0.2
+C    192.168.1.0/24 is directly connected, GigabitEthernet0/0
+C    172.16.0.0/30 is directly connected, Serial0/0/0
+>>> ping 203.0.113.2 source 10.0.1.10 (from R2)
+Type escape sequence to abort.
+!!!!!
+Success rate is 0 percent (0/5)","NAT ACL 1 only permits 192.168.1.0/24; traffic from 10.0.0.0/8 (behind R2) matches the implicit deny and is not translated — add 'access-list 1 permit 10.0.0.0 0.255.255.255' to include all internal subnets",3,nat-acl-mismatch,Medium

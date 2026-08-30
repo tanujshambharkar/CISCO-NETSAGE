@@ -173,6 +173,74 @@ RE_DEFAULT_GATEWAY = re.compile(
     re.MULTILINE,
 )
 
+# ── New Patterns (Phase 1 expansion) ──────────────────────────
+
+# Matches: ip ospf hello-interval <sec>
+RE_OSPF_HELLO = re.compile(
+    r"^\s*ip\s+ospf\s+hello-interval\s+(\d+)",
+    re.MULTILINE,
+)
+
+# Matches: ip ospf dead-interval <sec>
+RE_OSPF_DEAD = re.compile(
+    r"^\s*ip\s+ospf\s+dead-interval\s+(\d+)",
+    re.MULTILINE,
+)
+
+# Matches: spanning-tree portfast
+RE_PORTFAST = re.compile(
+    r"^\s+spanning-tree\s+portfast",
+    re.MULTILINE,
+)
+
+# Matches: switchport mode trunk
+RE_TRUNK_MODE = re.compile(
+    r"^\s+switchport\s+mode\s+trunk",
+    re.MULTILINE,
+)
+
+# Matches: speed 100 / speed auto
+RE_SPEED = re.compile(
+    r"^\s+speed\s+(\S+)",
+    re.MULTILINE,
+)
+
+# Matches: duplex full / duplex half / duplex auto
+RE_DUPLEX = re.compile(
+    r"^\s+duplex\s+(\S+)",
+    re.MULTILINE,
+)
+
+# Matches: ip access-group <name/num> in|out
+RE_ACL_APPLIED = re.compile(
+    r"^\s+ip\s+access-group\s+(\S+)\s+(in|out)",
+    re.MULTILINE,
+)
+
+# Matches: transport input ssh / transport input telnet / transport input all / etc.
+RE_TRANSPORT_INPUT = re.compile(
+    r"^\s+transport\s+input\s+(.+)",
+    re.MULTILINE,
+)
+
+# Matches: line vty 0 4 / line vty 0 15
+RE_LINE_VTY = re.compile(
+    r"^line\s+vty\s+\d+\s+\d+",
+    re.MULTILINE,
+)
+
+# Matches: ntp server <ip>
+RE_NTP_SERVER = re.compile(
+    r"^ntp\s+server\s+\S+",
+    re.MULTILINE,
+)
+
+# Matches: logging buffered / logging host <ip>
+RE_LOGGING = re.compile(
+    r"^logging\s+(buffered|host)\b",
+    re.MULTILINE,
+)
+
 
 # ──────────────────────────────────────────────
 # Parser: Extract interface blocks from running-config
@@ -190,6 +258,13 @@ class InterfaceBlock:
     trunk_native_vlan: int | None = None
     trunk_allowed_vlans: list[int] | None = None
     is_shutdown: bool = False
+    ospf_hello: int | None = None
+    ospf_dead: int | None = None
+    has_portfast: bool = False
+    is_trunk: bool = False
+    speed: str | None = None
+    duplex: str | None = None
+    acl_applied: list[str] | None = None
 
 
 def parse_interface_blocks(config_text: str) -> list[InterfaceBlock]:
@@ -248,6 +323,34 @@ def parse_interface_blocks(config_text: str) -> list[InterfaceBlock]:
 
         if RE_SHUTDOWN.match(line):
             current_block.is_shutdown = True
+
+        hello_match = RE_OSPF_HELLO.match(line)
+        if hello_match:
+            current_block.ospf_hello = int(hello_match.group(1))
+
+        dead_match = RE_OSPF_DEAD.match(line)
+        if dead_match:
+            current_block.ospf_dead = int(dead_match.group(1))
+
+        if RE_PORTFAST.match(line):
+            current_block.has_portfast = True
+
+        if RE_TRUNK_MODE.match(line):
+            current_block.is_trunk = True
+
+        speed_match = RE_SPEED.match(line)
+        if speed_match:
+            current_block.speed = speed_match.group(1)
+
+        duplex_match = RE_DUPLEX.match(line)
+        if duplex_match:
+            current_block.duplex = duplex_match.group(1)
+
+        acl_app_match = RE_ACL_APPLIED.match(line)
+        if acl_app_match:
+            if current_block.acl_applied is None:
+                current_block.acl_applied = []
+            current_block.acl_applied.append(acl_app_match.group(1))
 
     # Capture the last block
     if current_block:
@@ -642,6 +745,255 @@ def check_dhcp_pool_subnet(
 
 
 # ──────────────────────────────────────────────
+# New Checks (Phase 1 expansion)
+# ──────────────────────────────────────────────
+
+def check_ospf_timer_mismatch(blocks: list[InterfaceBlock]) -> list[Finding]:
+    """OSPF-TIMER: Detect OSPF hello/dead timer mismatches across interfaces in same area."""
+    findings: list[Finding] = []
+    ospf_interfaces: list[tuple[str, int, int, int]] = []  # name, hello, dead, line
+
+    for block in blocks:
+        if block.ospf_hello is not None or block.ospf_dead is not None:
+            hello = block.ospf_hello if block.ospf_hello is not None else 10
+            dead = block.ospf_dead if block.ospf_dead is not None else 40
+            ospf_interfaces.append((block.name, hello, dead, block.start_line))
+
+    if len(ospf_interfaces) < 2:
+        return findings
+
+    # Check for dead != 4 * hello (common misconfiguration)
+    for name, hello, dead, line in ospf_interfaces:
+        if dead != hello * 4:
+            findings.append(Finding(
+                check_id="OSPF-TIMER",
+                severity=Severity.WARNING,
+                detail=(
+                    f"Interface {name} has OSPF hello={hello}s, dead={dead}s; "
+                    f"dead interval is typically 4× hello ({hello * 4}s)"
+                ),
+                affected_lines=[line],
+            ))
+
+    # Check for mismatched timers across interfaces
+    hello_values = set(h for _, h, _, _ in ospf_interfaces)
+    if len(hello_values) > 1:
+        details = "; ".join(
+            f"{name} hello={hello}s" for name, hello, _, _ in ospf_interfaces
+        )
+        findings.append(Finding(
+            check_id="OSPF-TIMER",
+            severity=Severity.ERROR,
+            detail=f"OSPF hello timer mismatch across interfaces: {details}",
+            affected_lines=[line for _, _, _, line in ospf_interfaces],
+        ))
+
+    return findings
+
+
+def check_stp_portfast_trunk(blocks: list[InterfaceBlock]) -> list[Finding]:
+    """STP-PORTFAST: PortFast enabled on trunk ports is dangerous."""
+    findings: list[Finding] = []
+
+    for block in blocks:
+        if block.has_portfast and block.is_trunk:
+            findings.append(Finding(
+                check_id="STP-PORTFAST",
+                severity=Severity.ERROR,
+                detail=(
+                    f"Interface {block.name} has spanning-tree portfast enabled on a "
+                    f"trunk port; this can cause STP loops and network instability"
+                ),
+                affected_lines=[block.start_line],
+            ))
+
+    return findings
+
+
+def check_duplex_mismatch(blocks: list[InterfaceBlock]) -> list[Finding]:
+    """INTF-DUPLEX: Detect speed/duplex mismatch across connected interfaces."""
+    findings: list[Finding] = []
+
+    for block in blocks:
+        if block.speed and block.duplex:
+            # Flag hard-coded half-duplex with high speed
+            if block.duplex == "half" and block.speed in ("1000", "100"):
+                findings.append(Finding(
+                    check_id="INTF-DUPLEX",
+                    severity=Severity.WARNING,
+                    detail=(
+                        f"Interface {block.name} is set to speed {block.speed} "
+                        f"with half-duplex; this may cause excessive collisions "
+                        f"and poor throughput"
+                    ),
+                    affected_lines=[block.start_line],
+                ))
+        elif block.speed and not block.duplex:
+            if block.speed != "auto":
+                findings.append(Finding(
+                    check_id="INTF-DUPLEX",
+                    severity=Severity.INFO,
+                    detail=(
+                        f"Interface {block.name} has speed {block.speed} hard-coded "
+                        f"but duplex is not explicitly set; auto-negotiation mismatch possible"
+                    ),
+                    affected_lines=[block.start_line],
+                ))
+        elif block.duplex and not block.speed:
+            if block.duplex != "auto":
+                findings.append(Finding(
+                    check_id="INTF-DUPLEX",
+                    severity=Severity.INFO,
+                    detail=(
+                        f"Interface {block.name} has duplex {block.duplex} hard-coded "
+                        f"but speed is not explicitly set; auto-negotiation mismatch possible"
+                    ),
+                    affected_lines=[block.start_line],
+                ))
+
+    return findings
+
+
+def check_unused_acl(blocks: list[InterfaceBlock], config_text: str) -> list[Finding]:
+    """UNUSED-ACL: ACLs defined but not applied to any interface."""
+    findings: list[Finding] = []
+
+    # Collect all ACLs applied on interfaces
+    applied_acls: set[str] = set()
+    for block in blocks:
+        if block.acl_applied:
+            applied_acls.update(block.acl_applied)
+
+    # Also check for NAT source list references
+    for match in re.finditer(r"ip\s+nat\s+inside\s+source\s+list\s+(\S+)", config_text):
+        applied_acls.add(match.group(1))
+
+    # Find all defined numbered ACLs
+    defined_numbered: set[str] = set()
+    for match in RE_ACL_ENTRY.finditer(config_text):
+        defined_numbered.add(match.group(1))
+
+    # Find all defined named ACLs
+    defined_named: set[str] = set()
+    for match in RE_NAMED_ACL.finditer(config_text):
+        defined_named.add(match.group(2))
+
+    all_defined = defined_numbered | defined_named
+
+    for acl_id in all_defined:
+        if acl_id not in applied_acls:
+            # Find the line number
+            acl_match = re.search(
+                rf"^(?:ip\s+access-list\s+\S+\s+{re.escape(acl_id)}|access-list\s+{re.escape(acl_id)})",
+                config_text,
+                re.MULTILINE,
+            )
+            line_num = (
+                config_text[: acl_match.start()].count("\n") + 1
+                if acl_match
+                else 0
+            )
+            findings.append(Finding(
+                check_id="UNUSED-ACL",
+                severity=Severity.WARNING,
+                detail=(
+                    f"ACL '{acl_id}' is defined but not applied to any interface "
+                    f"or referenced in NAT/route-map configuration"
+                ),
+                affected_lines=[line_num] if line_num else [],
+            ))
+
+    return findings
+
+
+def check_no_ssh(config_text: str) -> list[Finding]:
+    """NO-SSH: VTY lines allowing only Telnet without SSH is a security risk."""
+    findings: list[Finding] = []
+
+    # Check if VTY lines exist
+    vty_matches = list(RE_LINE_VTY.finditer(config_text))
+    if not vty_matches:
+        return findings
+
+    for vty_match in vty_matches:
+        # Get the block after this line vty statement
+        start = vty_match.end()
+        # Find the next top-level command (non-indented line)
+        next_block = re.search(r"\n\S", config_text[start:])
+        end = start + next_block.start() if next_block else len(config_text)
+        vty_body = config_text[start:end]
+
+        transport_match = RE_TRANSPORT_INPUT.search(vty_body)
+        if transport_match:
+            transport_value = transport_match.group(1).strip().lower()
+            if transport_value == "telnet":
+                line_num = config_text[: vty_match.start()].count("\n") + 1
+                findings.append(Finding(
+                    check_id="NO-SSH",
+                    severity=Severity.WARNING,
+                    detail=(
+                        f"VTY lines ({vty_match.group().strip()}) configured with "
+                        f"'transport input telnet' only; SSH is not enabled — "
+                        f"credentials are sent in plaintext"
+                    ),
+                    affected_lines=[line_num],
+                ))
+        else:
+            # No transport input means default (all) which includes telnet
+            line_num = config_text[: vty_match.start()].count("\n") + 1
+            findings.append(Finding(
+                check_id="NO-SSH",
+                severity=Severity.INFO,
+                detail=(
+                    f"VTY lines ({vty_match.group().strip()}) have no explicit "
+                    f"'transport input' configured; defaults to all protocols "
+                    f"including insecure Telnet"
+                ),
+                affected_lines=[line_num],
+            ))
+
+    return findings
+
+
+def check_logging_missing(config_text: str) -> list[Finding]:
+    """LOGGING-MISSING: No logging buffered or logging host configured."""
+    findings: list[Finding] = []
+
+    if not RE_LOGGING.search(config_text):
+        findings.append(Finding(
+            check_id="LOGGING-MISSING",
+            severity=Severity.INFO,
+            detail=(
+                "No 'logging buffered' or 'logging host' configured; "
+                "system logs may be lost on reboot or unavailable for "
+                "remote troubleshooting"
+            ),
+            affected_lines=[],
+        ))
+
+    return findings
+
+
+def check_no_ntp(config_text: str) -> list[Finding]:
+    """NO-NTP: No NTP server configured for time synchronization."""
+    findings: list[Finding] = []
+
+    if not RE_NTP_SERVER.search(config_text):
+        findings.append(Finding(
+            check_id="NO-NTP",
+            severity=Severity.INFO,
+            detail=(
+                "No 'ntp server' configured; device clock may drift, "
+                "causing inaccurate log timestamps and certificate "
+                "validation issues"
+            ),
+            affected_lines=[],
+        ))
+
+    return findings
+
+
+# ──────────────────────────────────────────────
 # Main Runner
 # ──────────────────────────────────────────────
 
@@ -660,6 +1012,15 @@ def run_all_checks(config_text: str, config_file: str = "<stdin>") -> RuleCheckR
     all_findings.extend(check_trunk_native_vlan(blocks))
     all_findings.extend(check_acl_no_permit(config_text))
     all_findings.extend(check_dhcp_pool_subnet(blocks, config_text))
+
+    # Phase 1 expansion checks
+    all_findings.extend(check_ospf_timer_mismatch(blocks))
+    all_findings.extend(check_stp_portfast_trunk(blocks))
+    all_findings.extend(check_duplex_mismatch(blocks))
+    all_findings.extend(check_unused_acl(blocks, config_text))
+    all_findings.extend(check_no_ssh(config_text))
+    all_findings.extend(check_logging_missing(config_text))
+    all_findings.extend(check_no_ntp(config_text))
 
     # Build report
     errors = sum(1 for f in all_findings if f.severity == Severity.ERROR)

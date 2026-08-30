@@ -377,6 +377,75 @@ matching the NetSage AI schema.
 
 ---
 
+### Example 4: STP BPDU Guard Violation (Medium — Layer 2)
+
+**Input:**
+
+```text
+SYMPTOM:
+PC on Fa0/5 loses connectivity every time it boots up. The switch log shows the port
+going to err-disabled state. After errdisable recovery (5 minutes), the port comes back
+up briefly and then goes err-disabled again.
+
+TOPOLOGY:
+SW1 (Catalyst 2960) with BPDU Guard enabled on access ports. An unmanaged 5-port
+desktop switch is connected behind Fa0/5, with a PC connected to the unmanaged switch.
+
+SHOW COMMAND OUTPUTS:
+>>> show interfaces status err-disabled (SW1)
+Port      Name     Status       Reason           Err-disabled Vlans
+Fa0/5              err-disabled bpdu-guard       --
+
+>>> show logging | include BPDU
+%SPANTREE-2-BLOCK_BPDUGUARD: Received BPDU on port Fa0/5 with BPDU Guard enabled. Disabling port.
+
+>>> show running-config interface Fa0/5 (SW1)
+interface FastEthernet0/5
+ switchport mode access
+ switchport access vlan 10
+ spanning-tree portfast
+ spanning-tree bpduguard enable
+ no shutdown
+
+Diagnose the root cause of this network issue. Respond with a single JSON object
+matching the NetSage AI schema.
+```
+
+**Expected AI Output:**
+
+```json
+{
+  "root_cause": "BPDU Guard is enabled on Fa0/5 and an unmanaged switch behind the port is generating BPDUs, triggering a security violation that places the port in err-disabled state.",
+  "confidence": "HIGH",
+  "evidence": [
+    "err-disabled bpdu-guard",
+    "%SPANTREE-2-BLOCK_BPDUGUARD: Received BPDU on port Fa0/5 with BPDU Guard enabled. Disabling port.",
+    "spanning-tree bpduguard enable",
+    "spanning-tree portfast"
+  ],
+  "next_command": "show errdisable recovery",
+  "fix_steps": [
+    "Remove the unmanaged switch from behind Fa0/5 or replace it with a managed switch",
+    "enable",
+    "configure terminal",
+    "interface FastEthernet0/5",
+    "shutdown",
+    "no shutdown",
+    "end"
+  ],
+  "osi_layer": 2,
+  "human_approved": false
+}
+```
+
+**Why this is a good diagnosis:**
+- The err-disabled reason (`bpdu-guard`) and syslog message are directly quoted as evidence
+- Root cause correctly identifies the STP Layer 2 interaction, not a cable or VLAN issue
+- Fix steps acknowledge the real-world solution (remove unmanaged switch) before the port recovery commands
+- Layer 2 is correct because STP operates at the Data Link layer
+
+---
+
 ## 6. Multi-Fault Handling
 
 When show-command outputs reveal **more than one fault**, the AI should:

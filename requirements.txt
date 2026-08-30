@@ -1,5 +1,11 @@
-# No external dependencies required
-# NetSage AI uses only Python 3.10+ standard library:
+# Core API dependencies
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Optional: AI diagnosis execution (only needed for /api/diagnose?execute=true)
+google-genai>=1.0.0
+
+# Python 3.10+ standard library modules used (no install needed):
 #   - ipaddress  (subnet math)
 #   - re         (regex-based config parsing)
 #   - csv        (dataset parsing)
