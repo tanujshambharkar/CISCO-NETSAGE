@@ -5,6 +5,9 @@ uvicorn[standard]>=0.24.0
 # Optional: AI diagnosis execution (only needed for /api/diagnose?execute=true)
 google-genai>=1.0.0
 
+# Optional: Desktop GUI
+customtkinter>=5.2.0
+
 # Python 3.10+ standard library modules used (no install needed):
 #   - ipaddress  (subnet math)
 #   - re         (regex-based config parsing)

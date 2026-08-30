@@ -20,7 +20,8 @@ Project/
 │   ├── __init__.py
 │   ├── rule_checker.py              # Deterministic config validator (15 checks)
 │   ├── generate_dashboard.py        # Dashboard summary generator
-│   └── api.py                       # FastAPI REST API (6 endpoints)
+│   ├── api.py                       # FastAPI REST API (6 endpoints)
+│   └── gui.py                       # CustomTkinter Desktop GUI Application
 ├── logs/
 │   └── responsible_ai_log.md        # AI correction log (5 entries)
 └── tests/
@@ -118,7 +119,16 @@ curl -X POST "http://localhost:8000/api/diagnose?execute=true" \
   -d '{"symptom": "PC cannot reach remote subnet", "show_outputs": ">>> show ip route\nGateway of last resort is not set"}'
 ```
 
-### 4. Use the AI Prompt
+### 4. Run the Desktop GUI (Optional)
+
+If you installed `customtkinter`, you can launch the standalone visual desktop application:
+
+```bash
+python src/gui.py
+```
+This opens a modern dark-mode interface allowing you to pick configuration files, type in symptoms, and generate structured JSON AI diagnoses with a single click.
+
+### 5. Use the AI Prompt (Manual Fallback)
 
 Copy the system prompt from `prompts/diagnose_prompt.md` into your AI interface, then submit a case using the user prompt template. The AI will respond with a structured JSON diagnosis.
 
