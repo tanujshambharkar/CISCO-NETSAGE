@@ -33,6 +33,7 @@ from pydantic import BaseModel, Field
 # ── Local imports ──────────────────────────────
 from src.rule_checker import run_all_checks
 from src.generate_dashboard import parse_cases, CaseStats
+from src.guide import TROUBLESHOOTING_GUIDE
 
 # ── Paths ──────────────────────────────────────
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -159,6 +160,12 @@ async def health_check():
         "version": "2.0.0",
         "cases_loaded": CASES_PATH.exists(),
     }
+
+
+@app.get("/api/guide", tags=["System"])
+async def get_troubleshooting_guide():
+    """Get the Cisco Network Troubleshooting & Remediation Guide."""
+    return TROUBLESHOOTING_GUIDE
 
 
 @app.post("/api/analyze", tags=["Analysis"])

@@ -24,6 +24,7 @@ sys.path.insert(0, str(BASE_DIR))
 
 # Local imports
 from src.rule_checker import run_all_checks
+from src.guide import get_guide_markdown
 
 ctk.set_appearance_mode("Dark")
 ctk.set_default_color_theme("blue")
@@ -125,17 +126,34 @@ class NetSageApp(ctk.CTk):
         self.btn_diagnose = ctk.CTkButton(left_frame, text="Run AI & Rule Diagnosis", command=self.run_diagnosis_thread, height=42, font=ctk.CTkFont(size=14, weight="bold"))
         self.btn_diagnose.pack(fill="x", pady=(0, 5))
 
-        # --- Right Panel: Output ---
+        # --- Right Panel: Output & Guide Tabview ---
         right_frame = ctk.CTkFrame(self)
         right_frame.grid(row=2, column=1, padx=(10, 20), pady=10, sticky="nsew")
         right_frame.grid_columnconfigure(0, weight=1)
-        right_frame.grid_rowconfigure(1, weight=1)
+        right_frame.grid_rowconfigure(0, weight=1)
 
-        lbl_output = ctk.CTkLabel(right_frame, text="Diagnostic Results & Findings", font=ctk.CTkFont(size=16, weight="bold"))
-        lbl_output.grid(row=0, column=0, padx=12, pady=(10, 5), sticky="w")
+        self.tabview = ctk.CTkTabview(right_frame)
+        self.tabview.grid(row=0, column=0, padx=12, pady=(10, 12), sticky="nsew")
 
-        self.txt_output = ctk.CTkTextbox(right_frame, wrap="word", font=ctk.CTkFont(family="Consolas", size=12))
-        self.txt_output.grid(row=1, column=0, padx=12, pady=(0, 12), sticky="nsew")
+        self.tabview.add("Diagnostics")
+        self.tabview.add("Troubleshooting Guide")
+
+        # Configure tab grids
+        self.tabview.tab("Diagnostics").grid_columnconfigure(0, weight=1)
+        self.tabview.tab("Diagnostics").grid_rowconfigure(0, weight=1)
+        self.tabview.tab("Troubleshooting Guide").grid_columnconfigure(0, weight=1)
+        self.tabview.tab("Troubleshooting Guide").grid_rowconfigure(0, weight=1)
+
+        self.txt_output = ctk.CTkTextbox(self.tabview.tab("Diagnostics"), wrap="word", font=ctk.CTkFont(family="Consolas", size=12))
+        self.txt_output.grid(row=0, column=0, sticky="nsew")
+
+        self.txt_guide = ctk.CTkTextbox(self.tabview.tab("Troubleshooting Guide"), wrap="word", font=ctk.CTkFont(family="Segoe UI", size=12))
+        self.txt_guide.grid(row=0, column=0, sticky="nsew")
+
+        # Write Cisco Networking Troubleshooting Guide content
+        guide_text = get_guide_markdown()
+        self.txt_guide.insert("1.0", guide_text)
+        self.txt_guide.configure(state="disabled")
 
     def _save_api_key(self):
         key = self.entry_api_key.get().strip()
@@ -157,6 +175,7 @@ class NetSageApp(ctk.CTk):
                 self.config_content = f.read()
 
     def run_diagnosis_thread(self):
+        self.tabview.set("Diagnostics")  # Switch to Diagnostics tab automatically
         self.btn_diagnose.configure(state="disabled", text="Analyzing...")
         self.txt_output.delete("1.0", "end")
         self.txt_output.insert("end", "========================================================\n")

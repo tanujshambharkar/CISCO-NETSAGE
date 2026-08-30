@@ -126,7 +126,16 @@ If you installed `customtkinter`, you can launch the standalone visual desktop a
 ```bash
 python src/gui.py
 ```
+
 This opens a modern dark-mode interface allowing you to pick configuration files, type in symptoms, and generate structured JSON AI diagnoses with a single click.
+
+#### 📖 Standalone Desktop App Workflow & Guide
+1. **Gemini API Key Setup:** Provide your Gemini API Key in the field at the top of the interface and click **Save to .env** (or set `GEMINI_API_KEY` in your system environment variables).
+2. **Select Configuration File:** Click **Select Config File** to load an active Cisco IOS configuration (e.g., `running-config.txt`) from your local computer. Once loaded, NetSage will automatically run 15 static analysis checks against it.
+3. **Describe the Symptom:** Type a brief summary of the network fault in the **Network Symptom** text box (e.g., *"PC1 cannot reach remote server in VLAN 20"*).
+4. **Paste Show Output:** Paste relevant console output or diagnostic logs from Cisco Packet Tracer (e.g., `show interfaces trunk` or `show ip route`) in the **Show Command Outputs / Logs** text box.
+5. **Run Diagnostics:** Click **Run AI & Rule Diagnosis**. The app will automatically focus on the **Diagnostics** tab, showing static rule violations followed by Gemini's structured root-cause analysis.
+6. **Human Review Gate:** Double-check the AI-suggested fix steps against your network topology before copying the configuration commands to your live lab devices.
 
 ### 5. Use the AI Prompt (Manual Fallback)
 
@@ -169,7 +178,13 @@ Copy the system prompt from `prompts/diagnose_prompt.md` into your AI interface,
 
 ## Deliverables
 
-### 1. Troubleshooting Dataset (`data/cases.csv`)
+### 1. Complete Project Package & Report
+
+For academic or organizational submissions, the entire project including documentation, source code, and Cisco Packet Tracer environments has been bundled.
+- **Project Report**: [`PROJECT_REPORT.md`](PROJECT_REPORT.md) contains the detailed 10-chapter technical report.
+- **Zip Package**: `Cisco_NetSage_AI_Complete_Project_Package.zip` contains the complete bundled environment (run `python build_project_zip.py` to regenerate).
+
+### 2. Troubleshooting Dataset (`data/cases.csv`)
 
 50 cases across 14 fault categories:
 
