@@ -1,0 +1,608 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CISCO NETSAGE AI — Comprehensive Project Report</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --cisco-blue: #049fd9;
+      --cisco-dark-blue: #005073;
+      --cisco-navy: #0b2545;
+      --bg-dark: #0a0f1d;
+      --bg-card: #131d31;
+      --bg-card-alt: #1a2744;
+      --text-main: #e2e8f0;
+      --text-muted: #94a3b8;
+      --accent-cyan: #38bdf8;
+      --accent-green: #10b981;
+      --accent-amber: #f59e0b;
+      --accent-red: #ef4444;
+      --border-color: rgba(56, 189, 248, 0.15);
+      --border-glow: rgba(4, 159, 217, 0.35);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background-color: var(--bg-dark);
+      color: var(--text-main);
+      line-height: 1.65;
+      font-size: 15px;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    header {
+      background: linear-gradient(135deg, rgba(11, 37, 69, 0.9) 0%, rgba(4, 159, 217, 0.25) 100%);
+      border: 1px solid var(--border-glow);
+      border-radius: 16px;
+      padding: 48px 36px;
+      margin-bottom: 36px;
+      box-shadow: 0 12px 36px rgba(0, 0, 0, 0.45);
+      position: relative;
+      overflow: hidden;
+    }
+
+    header::after {
+      content: "";
+      position: absolute;
+      top: -50%;
+      right: -20%;
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(56, 189, 248, 0.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+
+    .badge-header {
+      display: inline-block;
+      padding: 6px 14px;
+      background: rgba(4, 159, 217, 0.15);
+      color: var(--accent-cyan);
+      border: 1px solid var(--cisco-blue);
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin-bottom: 16px;
+    }
+
+    h1 {
+      font-size: 32px;
+      font-weight: 800;
+      color: #ffffff;
+      line-height: 1.25;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      font-size: 17px;
+      color: var(--text-muted);
+      max-width: 850px;
+      margin-bottom: 24px;
+    }
+
+    .meta-bar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 20px;
+      padding-top: 20px;
+      border-top: 1px solid rgba(255, 255, 255, 0.1);
+      font-size: 13px;
+      color: var(--text-muted);
+    }
+
+    .meta-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .meta-item strong {
+      color: var(--text-main);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 18px;
+      margin-bottom: 36px;
+    }
+
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      padding: 22px 20px;
+      transition: transform 0.2s ease, border-color 0.2s ease;
+    }
+
+    .stat-card:hover {
+      transform: translateY(-3px);
+      border-color: var(--cisco-blue);
+    }
+
+    .stat-label {
+      font-size: 12px;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      margin-bottom: 8px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 800;
+      color: #ffffff;
+    }
+
+    .stat-sub {
+      font-size: 12px;
+      color: var(--accent-cyan);
+      margin-top: 4px;
+    }
+
+    .section-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: 32px;
+      margin-bottom: 30px;
+    }
+
+    h2 {
+      font-size: 22px;
+      font-weight: 700;
+      color: #ffffff;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid var(--cisco-dark-blue);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    h3 {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--accent-cyan);
+      margin: 22px 0 12px;
+    }
+
+    p {
+      margin-bottom: 16px;
+      color: var(--text-main);
+    }
+
+    ul, ol {
+      margin-left: 20px;
+      margin-bottom: 16px;
+    }
+
+    li {
+      margin-bottom: 8px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin: 20px 0;
+      font-size: 13.5px;
+    }
+
+    th {
+      background: var(--bg-card-alt);
+      color: var(--accent-cyan);
+      text-align: left;
+      padding: 12px 14px;
+      border: 1px solid var(--border-color);
+      font-weight: 600;
+    }
+
+    td {
+      padding: 11px 14px;
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      color: var(--text-main);
+    }
+
+    tr:nth-child(even) {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      background: rgba(0, 0, 0, 0.4);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--accent-cyan);
+    }
+
+    pre {
+      background: #090e18;
+      border: 1px solid rgba(56, 189, 248, 0.2);
+      border-radius: 10px;
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px;
+      line-height: 1.5;
+      margin: 16px 0;
+      color: #e2e8f0;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+
+    .badge-error { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); }
+    .badge-warn { background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); }
+    .badge-ok { background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); }
+
+    .callout {
+      background: rgba(4, 159, 217, 0.08);
+      border-left: 4px solid var(--cisco-blue);
+      border-radius: 0 8px 8px 0;
+      padding: 16px 20px;
+      margin: 20px 0;
+    }
+
+    .callout-title {
+      font-weight: 700;
+      color: var(--accent-cyan);
+      margin-bottom: 6px;
+      font-size: 14px;
+    }
+
+    .diagram-box {
+      background: #070c16;
+      border: 1px solid var(--border-color);
+      border-radius: 10px;
+      padding: 20px;
+      text-align: center;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12.5px;
+      color: var(--accent-cyan);
+      overflow-x: auto;
+      white-space: pre;
+      margin: 20px 0;
+    }
+
+    footer {
+      text-align: center;
+      padding: 30px;
+      color: var(--text-muted);
+      font-size: 13px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      margin-top: 50px;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+
+  <header>
+    <div class="badge-header">Capstone Project & Technical Report</div>
+    <h1>CISCO NETSAGE AI</h1>
+    <div class="subtitle">A Dual-Engine Deterministic & LLM Architecture for Intelligent, Safe, and Automated Network Diagnostics in Cisco Packet Tracer Lab Environments</div>
+    <div class="meta-bar">
+      <div class="meta-item"><strong>Author:</strong> Tanuj Shambharkar</div>
+      <div class="meta-item"><strong>Platform:</strong> Cisco Packet Tracer Lab</div>
+      <div class="meta-item"><strong>License:</strong> Educational & Research</div>
+      <div class="meta-item"><strong>Date:</strong> August 2026</div>
+      <div class="meta-item"><strong>Repo:</strong> github.com/tanujshambharkar/CISCO-NETSAGE</div>
+    </div>
+  </header>
+
+  <!-- High-Level Stats -->
+  <div class="stats-grid">
+    <div class="stat-card">
+      <div class="stat-label">Benchmark Cases</div>
+      <div class="stat-value">30</div>
+      <div class="stat-sub">Across 8 Fault Categories</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">Deterministic Rules</div>
+      <div class="stat-value">8 Modules</div>
+      <div class="stat-sub">0ms Hallucination-Free</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">AI Agreement Rate</div>
+      <div class="stat-value">83.3%</div>
+      <div class="stat-sub">25 / 30 Cases Validated</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-label">External Dependencies</div>
+      <div class="stat-value">0</div>
+      <div class="stat-sub">Python 3.10+ Standard Lib</div>
+    </div>
+  </div>
+
+  <!-- Executive Summary -->
+  <div class="section-card">
+    <h2>1. Executive Summary</h2>
+    <p>
+      Troubleshooting enterprise computer networks in lab and production environments requires rigorous correlation across all 7 layers of the OSI model. In complex topologies involving VLAN trunking, dynamic OSPF routing, DHCP relay agents, and stateful ACLs, students and junior network engineers frequently struggle with high cognitive overhead.
+    </p>
+    <p>
+      While Generative AI and LLMs have emerged as intuitive troubleshooting assistants, pure LLMs suffer from severe failure modes: <strong>hallucination of invisible artifacts</strong>, <strong>arithmetic errors in CIDR calculations</strong>, and <strong>proposals of destructive commands</strong>.
+    </p>
+    <p>
+      <strong>Cisco NetSage AI</strong> solves this through a novel <strong>dual-engine hybrid framework</strong>:
+    </p>
+    <ul>
+      <li><strong>Deterministic Rule Engine (<code>rule_checker.py</code>):</strong> Static configuration validator executing 8 algorithms with zero hallucination.</li>
+      <li><strong>Constrained AI Diagnostic Agent (<code>diagnose_prompt.md</code>):</strong> Structured LLM system prompt enforcing 7 safety guardrails, evidence-based reasoning, and strict JSON schemas.</li>
+      <li><strong>Responsible AI Governance (<code>responsible_ai_log.md</code>):</strong> Empirical error tracking taxonomy with continuous feedback loops.</li>
+    </ul>
+  </div>
+
+  <!-- System Architecture -->
+  <div class="section-card">
+    <h2>2. System Architecture & Workflow</h2>
+    <p>The diagnostic pipeline combines deterministic static checks with contextual LLM reasoning before passing through a mandatory human gate:</p>
+
+    <div class="diagram-box">
+               +--------------------------------------------+
+               |   Cisco Packet Tracer Incident / Symptom   |
+               +---------------------+----------------------+
+                                     |
+                                     v
+                   +-----------------+-----------------+
+                   |                                   |
+                   v                                   v
+   +-------------------------------+   +-------------------------------+
+   |   Deterministic Rule Engine   |   |   Constrained AI Prompt Agent |
+   |      (rule_checker.py)        |   |     (diagnose_prompt.md)      |
+   | - 8 Deterministic Checks      |   | - 7 Safety Guardrails         |
+   | - IP / Subnet Arithmetic      |   | - Structured JSON Output      |
+   +---------------+---------------+   +---------------+---------------+
+                   |                                   |
+                   +-----------------+-----------------+
+                                     |
+                                     v
+                   +-----------------+-----------------+
+                   |   Human-in-the-Loop Reviewer Gate |
+                   |   (Lab Instructor / Admin)        |
+                   +-----------------+-----------------+
+                                     |
+                    +----------------+----------------+
+                    |                                 |
+                    v (Approved)                      v (Disagreed)
+   +--------------------------------+   +--------------------------------+
+   | Apply Fix to Packet Tracer Net |   | Log to Responsible AI System   |
+   | (Config delta applied safely)  |   | (responsible_ai_log.md)        |
+   +--------------------------------+   +--------------------------------+
+    </div>
+  </div>
+
+  <!-- Benchmark Dataset Breakdown -->
+  <div class="section-card">
+    <h2>3. Troubleshooting Dataset & Benchmark (30 Cases)</h2>
+    <p>The benchmark dataset in <code>data/cases.csv</code> provides 30 rigorously documented test cases across 8 fault categories and 3 difficulty tiers:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th>Count</th>
+          <th>OSI Layer</th>
+          <th>Representative Fault Examples</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>VLAN</strong></td>
+          <td>4</td>
+          <td>Layer 2</td>
+          <td>Missing VLAN definition, native VLAN trunk mismatch, trunk allowed list exclusion</td>
+        </tr>
+        <tr>
+          <td><strong>GATEWAY</strong></td>
+          <td>4</td>
+          <td>Layer 3</td>
+          <td>Wrong host subnet mask, missing default gateway, gateway on foreign subnet</td>
+        </tr>
+        <tr>
+          <td><strong>DHCP</strong></td>
+          <td>4</td>
+          <td>Layer 3 / 7</td>
+          <td>Missing <code>ip helper-address</code>, pool subnet mismatch, unexcluded router IP</td>
+        </tr>
+        <tr>
+          <td><strong>DNS</strong></td>
+          <td>3</td>
+          <td>Layer 7</td>
+          <td>Wrong DNS IP, DNS server port shut down, missing A-record</td>
+        </tr>
+        <tr>
+          <td><strong>ROUTING</strong></td>
+          <td>5</td>
+          <td>Layer 3</td>
+          <td>Missing default route, OSPF area mismatch on P2P link, passive interface on neighbor link</td>
+        </tr>
+        <tr>
+          <td><strong>ACL</strong></td>
+          <td>4</td>
+          <td>Layer 3 / 4</td>
+          <td>ACL in wrong direction, empty ACL (implicit deny-all), inverted wildcard mask</td>
+        </tr>
+        <tr>
+          <td><strong>NAT</strong></td>
+          <td>3</td>
+          <td>Layer 3 / 4</td>
+          <td>Missing <code>ip nat outside</code>, missing <code>overload</code> keyword, source ACL mismatch</td>
+        </tr>
+        <tr>
+          <td><strong>WIRELESS</strong></td>
+          <td>3</td>
+          <td>Layer 1 / 2</td>
+          <td>WPA2-PSK passphrase mismatch, 2.4GHz channel interference (Ch 1/2), missing Option 43</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Deterministic Engine -->
+  <div class="section-card">
+    <h2>4. Deterministic Rule Checker (`rule_checker.py`)</h2>
+    <p>The deterministic engine runs in standard Python without third-party dependencies, executing 8 key checks:</p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Check ID</th>
+          <th>Severity</th>
+          <th>Detection Mechanism</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><code>DUP-IP</code></td>
+          <td><span class="badge badge-error">ERROR</span></td>
+          <td>Tracks all assigned IP addresses; flags identical IPs assigned to distinct interfaces.</td>
+        </tr>
+        <tr>
+          <td><code>SUBNET-MISMATCH</code></td>
+          <td><span class="badge badge-error">ERROR</span></td>
+          <td>Detects conflicting subnet mask lengths assigned to interfaces on the same network.</td>
+        </tr>
+        <tr>
+          <td><code>MISSING-VLAN</code></td>
+          <td><span class="badge badge-error">ERROR</span></td>
+          <td>Finds VLANs referenced in access or trunk ports but missing from the switch database.</td>
+        </tr>
+        <tr>
+          <td><code>SHUTDOWN-INTF</code></td>
+          <td><span class="badge badge-warn">WARN</span></td>
+          <td>Identifies interfaces left in an administratively shutdown state.</td>
+        </tr>
+        <tr>
+          <td><code>NO-GATEWAY</code></td>
+          <td><span class="badge badge-ok">INFO</span></td>
+          <td>Audits host or switch configurations for missing default gateway or default routes.</td>
+        </tr>
+        <tr>
+          <td><code>TRUNK-NATIVE</code></td>
+          <td><span class="badge badge-error">ERROR</span></td>
+          <td>Compares native VLAN IDs across all trunk links to detect 802.1Q tag mismatches.</td>
+        </tr>
+        <tr>
+          <td><code>ACL-NO-PERMIT</code></td>
+          <td><span class="badge badge-error">ERROR</span></td>
+          <td>Flags ACLs with deny statements but no permit entries (resulting in total blackhole).</td>
+        </tr>
+        <tr>
+          <td><code>DHCP-POOL</code></td>
+          <td><span class="badge badge-error">ERROR</span></td>
+          <td>Calculates network boundaries and ensures <code>default-router</code> falls strictly within range.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Responsible AI Log -->
+  <div class="section-card">
+    <h2>5. Responsible AI Governance & Error Taxonomy</h2>
+    <p>
+      In accordance with AI safety best practices, all AI diagnoses are flagged with <code>"human_approved": false</code> until validated. Disagreements are logged to <code>logs/responsible_ai_log.md</code>:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Log ID</th>
+          <th>Case Ref</th>
+          <th>Error Type</th>
+          <th>AI Misdiagnosis vs. Actual Root Cause</th>
+          <th>Prompt Remediation Action</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>LOG-001</strong></td>
+          <td>CASE-007</td>
+          <td>Misdiagnosis</td>
+          <td>AI assumed interface down; actual cause was Gateway IP on foreign subnet.</td>
+          <td>Instructed AI to calculate CIDR containment before interface checks.</td>
+        </tr>
+        <tr>
+          <td><strong>LOG-002</strong></td>
+          <td>CASE-011</td>
+          <td>Misdiagnosis</td>
+          <td>AI claimed pool exhaustion; actual cause was router IP unexcluded.</td>
+          <td>Added cross-reference rule between pool range and interface IPs.</td>
+        </tr>
+        <tr>
+          <td><strong>LOG-003</strong></td>
+          <td>CASE-018</td>
+          <td>Hallucinated Evidence</td>
+          <td>AI hallucinated OSPF timer mismatch when timer output was omitted.</td>
+          <td>Added negative few-shot example forbidding inference without evidence.</td>
+        </tr>
+        <tr>
+          <td><strong>LOG-004</strong></td>
+          <td>CASE-024</td>
+          <td>Incomplete Fix</td>
+          <td>AI blamed routing for return drop; actual cause was ACL missing ICMP reply.</td>
+          <td>Enforced explicit protocol enumeration for all active ACLs.</td>
+        </tr>
+        <tr>
+          <td><strong>LOG-005</strong></td>
+          <td>CASE-012</td>
+          <td>Wrong Layer</td>
+          <td>AI jumped to Layer 7 DNS; actual cause was invalid Layer 3 default-router.</td>
+          <td>Mandated bottom-up OSI ordering (Layer 1&rarr;2&rarr;3 before 7).</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Packet Tracer Lab Topology -->
+  <div class="section-card">
+    <h2>6. Cisco Packet Tracer Lab Topology & Configs</h2>
+    <p>
+      The complete Packet Tracer lab topology files are located in <code>cisco_packet_tracer_lab/</code>:
+    </p>
+    <ul>
+      <li><code>baseline_configs/</code>: Clean, fully functioning Cisco IOS configs for R1 (Core/NAT/DHCP), R2 (Inter-VLAN Branch), SW1 (Core), SW2 (Access), and WLC 2504.</li>
+      <li><code>fault_scenarios/</code>: Injection scripts for all 30 benchmark cases.</li>
+      <li><code>verify_lab.py</code>: Automated validator testing all lab device configurations.</li>
+    </ul>
+
+    <div class="callout">
+      <div class="callout-title">Testing in Cisco Packet Tracer:</div>
+      Open Cisco Packet Tracer, paste the configuration from <code>baseline_configs/</code>, inject faults from <code>fault_scenarios/</code>, and run <code>python src/rule_checker.py --config &lt;file&gt;</code> to observe real-time diagnostics.
+    </div>
+  </div>
+
+  <footer>
+    CISCO NETSAGE AI &bull; Intelligent Network Troubleshooting Assistant &bull; 2026 Academic & Research Release
+  </footer>
+
+</div>
+
+</body>
+</html>
